@@ -16,9 +16,9 @@ const Contact = () => {
             
             <div className="space-y-6">
               {[
-                { icon: <Mail />, label: "Email", value: "support@docvault.io" },
-                { icon: <Phone />, label: "Phone", value: "+1 (555) 000-0000" },
-                { icon: <MapPin />, label: "Location", value: "123 Tech Way, San Francisco, CA" }
+                { icon: <Mail />, label: "Email", value: "[EMAIL_ADDRESS]" },
+                { icon: <Phone />, label: "Phone", value: "+91 9818181818" },
+                { icon: <MapPin />, label: "Location", value: "Block (B) Sec-63 Noida" }
               ].map((item, i) => (
                 <div key={i} className="flex items-center gap-4">
                   <div className="w-12 h-12 bg-primary-100 text-primary-600 rounded-xl flex items-center justify-center">

@@ -18,6 +18,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Root Route for status check
 app.get('/', (req, res) => {
+    console.log('Root route accessed');
     res.json({ message: 'DocVault API is running', status: 'OK' });
 });
 
@@ -29,9 +30,17 @@ app.use('/api/auth', authRoutes);
 app.use('/api/documents', documentRoutes);
 
 // DB Connection
+console.log('Attempting to connect to MongoDB...');
+if (!process.env.MONGO_URI) {
+    console.error('CRITICAL: MONGO_URI is not defined in environment variables');
+}
+
 mongoose.connect(process.env.MONGO_URI)
-    .then(() => console.log('MongoDB Connected'))
-    .catch(err => console.error('MongoDB connection error:', err));
+    .then(() => console.log('MongoDB Connected Successfully'))
+    .catch(err => {
+        console.error('CRITICAL: MongoDB connection error details:');
+        console.error(err);
+    });
 
 const PORT = process.env.PORT || 5000;
 if (process.env.NODE_ENV !== 'production') {
