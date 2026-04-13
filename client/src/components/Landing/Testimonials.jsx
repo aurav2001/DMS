@@ -4,19 +4,19 @@ import { Star } from 'lucide-react';
 
 const testimonials = [
   {
-    name: "Sarah Johnson",
+    name: "Mr. Anurag",
     role: "Legal Analyst at TechCore",
     quote: "DocVault has completely transformed how our team manages sensitive case files. The version control is a lifesaver!",
     avatar: "SJ"
   },
   {
-    name: "Michael Chen",
+    name: "MR. Gaurav Kumar",
     role: "Project Manager at BuildIt",
     quote: "The interface is so intuitive. Our team was onboarded within hours, and the search feature is incredibly fast.",
     avatar: "MC"
   },
   {
-    name: "Emily Rodriguez",
+    name: "Anil Ray",
     role: "Director of Operations",
     quote: "Finally, a DMS that actually makes sense. The sharing controls give us peace of mind when working with clients.",
     avatar: "ER"

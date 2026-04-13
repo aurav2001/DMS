@@ -22,13 +22,14 @@ const UploadModal = ({ onClose, onSuccess }) => {
 
     const handleUpload = async () => {
         if (!file) return;
+        const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
         setUploading(true);
         const formData = new FormData();
         formData.append('file', file);
         formData.append('title', title);
 
         try {
-            const res = await axios.post('http://localhost:5000/api/documents/upload', formData, {
+            const res = await axios.post(`${API_BASE}/documents/upload`, formData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
             toast.success('File uploaded successfully!');

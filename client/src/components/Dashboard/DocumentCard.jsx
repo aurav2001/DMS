@@ -49,7 +49,11 @@ const DocumentCard = ({ doc, onStar, onDelete, onShare }) => {
                   initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}
                   className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-xl shadow-2xl z-20 py-2 overflow-hidden"
                 >
-                  <button onClick={() => { window.open(`http://localhost:5000/${doc.fileUrl}`); setShowOptions(false); }} className="flex items-center gap-3 w-full px-4 py-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+                  <button onClick={() => { 
+                    const API_SERVER = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api', '') : 'http://localhost:5000';
+                    window.open(`${API_SERVER}/${doc.fileUrl}`); 
+                    setShowOptions(false); 
+                  }} className="flex items-center gap-3 w-full px-4 py-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
                     <Download className="w-4 h-4" /> Download
                   </button>
                   <button onClick={() => { onShare(doc._id); setShowOptions(false); }} className="flex items-center gap-3 w-full px-4 py-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">

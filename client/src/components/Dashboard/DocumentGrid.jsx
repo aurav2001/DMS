@@ -5,9 +5,10 @@ import axios from 'axios';
 import toast from 'react-hot-toast';
 
 const DocumentGrid = ({ documents, fetchDocuments }) => {
+    const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
     const handleStar = async (id) => {
         try {
-            await axios.patch(`http://localhost:5000/api/documents/${id}/star`);
+            await axios.patch(`${API_BASE}/documents/${id}/star`);
             fetchDocuments();
         } catch (err) {
             toast.error('Failed to update document');
@@ -17,7 +18,7 @@ const DocumentGrid = ({ documents, fetchDocuments }) => {
     const handleDelete = async (id) => {
         if (!window.confirm('Are you sure you want to delete this document?')) return;
         try {
-            await axios.delete(`http://localhost:5000/api/documents/${id}`);
+            await axios.delete(`${API_BASE}/documents/${id}`);
             toast.success('Document deleted');
             fetchDocuments();
         } catch (err) {
@@ -29,7 +30,7 @@ const DocumentGrid = ({ documents, fetchDocuments }) => {
         const userId = window.prompt('Enter the user ID to share with:');
         if (!userId) return;
         try {
-            axios.post(`http://localhost:5000/api/documents/${id}/share`, { userId });
+            axios.post(`${API_BASE}/documents/${id}/share`, { userId });
             toast.success('Shared successfully!');
         } catch (err) {
             toast.error('Sharing failed');
