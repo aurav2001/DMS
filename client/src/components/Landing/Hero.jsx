@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Play, ArrowRight, FileText, CheckCircle } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const Hero = () => {
   return (
@@ -37,9 +38,9 @@ const Hero = () => {
             </p>
             
             <div className="flex flex-wrap gap-4">
-              <button className="btn-primary flex items-center gap-2">
+              <Link to="/register" className="btn-primary flex items-center gap-2">
                 Get Started Free <ArrowRight className="w-5 h-5" />
-              </button>
+              </Link>
               <button className="btn-outline flex items-center gap-2">
                 <Play className="w-5 h-5 fill-current" /> Watch Demo
               </button>

@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { Menu, X, Shield, ChevronDown, User, Settings, LogOut } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Shield, ChevronDown, User, Settings, LogOut, Menu, X } from 'lucide-react';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -51,8 +52,8 @@ const Navbar = () => {
           <div className="hidden md:flex items-center gap-4">
             {!user ? (
               <>
-                <button className="text-slate-600 font-medium hover:text-primary-600 transition-colors">Login</button>
-                <button className="btn-primary">Get Started</button>
+                <Link to="/login" className="text-slate-600 font-medium hover:text-primary-600 transition-colors">Login</Link>
+                <Link to="/register" className="btn-primary">Get Started</Link>
               </>
             ) : (
               <div className="relative">
@@ -113,8 +114,8 @@ const Navbar = () => {
                 </a>
               ))}
               <div className="pt-4 flex flex-col gap-4">
-                <button className="btn-outline w-full">Login</button>
-                <button className="btn-primary w-full">Get Started</button>
+                <Link to="/login" className="btn-outline w-full text-center">Login</Link>
+                <Link to="/register" className="btn-primary w-full text-center">Get Started</Link>
               </div>
             </div>
           </motion.div>
