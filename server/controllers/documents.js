@@ -1,4 +1,5 @@
 const Document = require('../models/Document');
+const { put, del } = require('@vercel/blob');
 const fs = require('fs');
 const path = require('path');
 
@@ -6,16 +7,25 @@ const uploadDocument = async (req, res) => {
     try {
         if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
 
+        // Add a timestamp to the filename to avoid collisions
+        const fileName = `${Date.now()}-${req.file.originalname}`;
+
+        // Upload to Vercel Blob
+        const blob = await put(fileName, req.file.buffer, {
+            access: 'public',
+            token: process.env.BLOB_READ_WRITE_TOKEN
+        });
+
         const newDocument = new Document({
             title: req.body.title || req.file.originalname,
-            fileUrl: req.file.path,
+            fileUrl: blob.url,
             fileType: req.file.mimetype,
             fileSize: req.file.size,
             uploadedBy: req.user.id,
             tags: req.body.tags ? JSON.parse(req.body.tags) : [],
             versions: [{
                 versionNumber: 1,
-                fileUrl: req.file.path
+                fileUrl: blob.url
             }]
         });
 
@@ -82,7 +92,11 @@ const deleteDocument = async (req, res) => {
 
         if (document.isDeleted) {
             // Permanent delete if already in trash
-            if (fs.existsSync(document.fileUrl)) {
+            if (document.fileUrl.startsWith('http')) {
+                // Delete from Vercel Blob
+                await del(document.fileUrl, { token: process.env.BLOB_READ_WRITE_TOKEN });
+            } else if (fs.existsSync(document.fileUrl)) {
+                // Delete from local filesystem (fallback)
                 fs.unlinkSync(document.fileUrl);
             }
             await Document.findByIdAndDelete(req.params.id);
