@@ -1,37 +1,56 @@
 const Document = require('../models/Document');
-const { put, del } = require('@vercel/blob');
-const fs = require('fs');
-const path = require('path');
 
 const uploadDocument = async (req, res) => {
     try {
         if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
 
-        // Add a timestamp to the filename to avoid collisions
-        const fileName = `${Date.now()}-${req.file.originalname}`;
-
-        // Upload to Vercel Blob
-        const blob = await put(fileName, req.file.buffer, {
-            access: 'public',
-            token: process.env.BLOB_READ_WRITE_TOKEN
-        });
-
         const newDocument = new Document({
             title: req.body.title || req.file.originalname,
-            fileUrl: blob.url,
+            fileName: req.file.originalname,
+            fileData: req.file.buffer,
+            fileUrl: '',
             fileType: req.file.mimetype,
             fileSize: req.file.size,
             uploadedBy: req.user.id,
             tags: req.body.tags ? JSON.parse(req.body.tags) : [],
             versions: [{
                 versionNumber: 1,
-                fileUrl: blob.url
+                fileUrl: ''
             }]
         });
 
         await newDocument.save();
-        res.status(201).json(newDocument);
+        
+        // Set fileUrl to the download endpoint
+        newDocument.fileUrl = `/api/documents/download/${newDocument._id}`;
+        newDocument.versions[0].fileUrl = newDocument.fileUrl;
+        await newDocument.save();
+
+        // Don't send fileData back to client
+        const doc = newDocument.toObject();
+        delete doc.fileData;
+        res.status(201).json(doc);
     } catch (err) {
+        console.error('Upload Error:', err);
+        res.status(500).json({ message: err.message });
+    }
+};
+
+const downloadDocument = async (req, res) => {
+    try {
+        const document = await Document.findById(req.params.id);
+        if (!document || !document.fileData) {
+            return res.status(404).json({ message: 'File not found' });
+        }
+        
+        res.set({
+            'Content-Type': document.fileType,
+            'Content-Disposition': `attachment; filename="${document.fileName || 'download'}"`,
+            'Content-Length': document.fileData.length
+        });
+        res.send(document.fileData);
+    } catch (err) {
+        console.error('Download Error:', err);
         res.status(500).json({ message: err.message });
     }
 };
@@ -41,7 +60,6 @@ const getDocuments = async (req, res) => {
         const { tab, search } = req.query;
         let query = { isDeleted: false };
 
-        // Handle Tabs
         switch (tab) {
             case 'Shared with Me':
                 query.sharedWith = req.user.id;
@@ -57,16 +75,18 @@ const getDocuments = async (req, res) => {
             case 'Recent':
                 query.uploadedBy = req.user.id;
                 break;
-            default: // My Documents
+            default:
                 query.uploadedBy = req.user.id;
         }
 
-        // Handle Search
         if (search) {
             query.title = { $regex: search, $options: 'i' };
         }
 
-        let findQuery = Document.find(query).populate('uploadedBy', 'name email');
+        // Exclude fileData from query results (it's large)
+        let findQuery = Document.find(query)
+            .select('-fileData')
+            .populate('uploadedBy', 'name email');
         
         if (tab === 'Recent') {
             findQuery = findQuery.sort({ updatedAt: -1 }).limit(10);
@@ -91,18 +111,9 @@ const deleteDocument = async (req, res) => {
         }
 
         if (document.isDeleted) {
-            // Permanent delete if already in trash
-            if (document.fileUrl.startsWith('http')) {
-                // Delete from Vercel Blob
-                await del(document.fileUrl, { token: process.env.BLOB_READ_WRITE_TOKEN });
-            } else if (fs.existsSync(document.fileUrl)) {
-                // Delete from local filesystem (fallback)
-                fs.unlinkSync(document.fileUrl);
-            }
             await Document.findByIdAndDelete(req.params.id);
             res.json({ message: 'Document deleted permanently' });
         } else {
-            // Move to trash
             document.isDeleted = true;
             await document.save();
             res.json({ message: 'Document moved to trash' });
@@ -141,4 +152,4 @@ const shareDocument = async (req, res) => {
     }
 };
 
-module.exports = { uploadDocument, getDocuments, deleteDocument, toggleStar, shareDocument };
+module.exports = { uploadDocument, getDocuments, deleteDocument, toggleStar, shareDocument, downloadDocument };

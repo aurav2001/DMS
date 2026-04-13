@@ -2,7 +2,9 @@ const mongoose = require('mongoose');
 
 const documentSchema = new mongoose.Schema({
     title: { type: String, required: true },
-    fileUrl: { type: String, required: true },
+    fileUrl: { type: String, default: '' },
+    fileName: { type: String },
+    fileData: { type: Buffer },
     fileType: { type: String, required: true },
     fileSize: { type: Number, required: true },
     uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
