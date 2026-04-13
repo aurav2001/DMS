@@ -75,6 +75,14 @@ const DashboardLayout = ({
           </nav>
 
           <div className="pt-6 border-t dark:border-slate-800">
+            {user?.role === 'Admin' && (
+              <button 
+                onClick={() => window.location.href = '/admin'}
+                className="w-full flex items-center gap-3 px-4 py-3 mb-2 rounded-xl text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-all font-semibold"
+              >
+                <Shield className="w-5 h-5" /> Admin Panel
+              </button>
+            )}
             <SidebarLink icon={Settings} label="Settings" />
             <button 
               onClick={logout}

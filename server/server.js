@@ -25,9 +25,11 @@ app.get('/', (req, res) => {
 // Routes
 const authRoutes = require('./routes/auth');
 const documentRoutes = require('./routes/documents');
+const adminRoutes = require('./routes/admin');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/documents', documentRoutes);
+app.use('/api/admin', adminRoutes);
 
 // DB Connection
 console.log('Attempting to connect to MongoDB...');

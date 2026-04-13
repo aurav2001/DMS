@@ -1,0 +1,97 @@
+const User = require('../models/User');
+const Document = require('../models/Document');
+
+// Get all users
+const getAllUsers = async (req, res) => {
+    try {
+        const users = await User.find().select('-password').sort({ createdAt: -1 });
+        res.json(users);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};
+
+// Update user role
+const updateUserRole = async (req, res) => {
+    try {
+        const { role } = req.body;
+        const user = await User.findByIdAndUpdate(
+            req.params.id,
+            { role },
+            { new: true }
+        ).select('-password');
+        if (!user) return res.status(404).json({ message: 'User not found' });
+        res.json(user);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};
+
+// Delete user
+const deleteUser = async (req, res) => {
+    try {
+        await Document.deleteMany({ uploadedBy: req.params.id });
+        await User.findByIdAndDelete(req.params.id);
+        res.json({ message: 'User and their documents deleted' });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};
+
+// Get admin stats
+const getStats = async (req, res) => {
+    try {
+        const totalUsers = await User.countDocuments();
+        const totalDocs = await Document.countDocuments({ isDeleted: false });
+        const totalStorage = await Document.aggregate([
+            { $match: { isDeleted: false } },
+            { $group: { _id: null, total: { $sum: '$fileSize' } } }
+        ]);
+        const recentUsers = await User.find().select('-password').sort({ createdAt: -1 }).limit(5);
+        const recentDocs = await Document.find({ isDeleted: false })
+            .select('-fileData')
+            .populate('uploadedBy', 'name email')
+            .sort({ createdAt: -1 }).limit(5);
+
+        res.json({
+            totalUsers,
+            totalDocs,
+            totalStorage: totalStorage[0]?.total || 0,
+            recentUsers,
+            recentDocs
+        });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};
+
+// Get all documents (admin)
+const getAllDocuments = async (req, res) => {
+    try {
+        const documents = await Document.find()
+            .select('-fileData')
+            .populate('uploadedBy', 'name email')
+            .sort({ createdAt: -1 });
+        res.json(documents);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};
+
+// Update document permissions
+const updateDocPermissions = async (req, res) => {
+    try {
+        const { permissions, accessLevel } = req.body;
+        const doc = await Document.findByIdAndUpdate(
+            req.params.id,
+            { permissions, accessLevel },
+            { new: true }
+        ).select('-fileData');
+        if (!doc) return res.status(404).json({ message: 'Document not found' });
+        res.json(doc);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};
+
+module.exports = { getAllUsers, updateUserRole, deleteUser, getStats, getAllDocuments, updateDocPermissions };

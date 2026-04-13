@@ -12,6 +12,15 @@ const documentSchema = new mongoose.Schema({
     isStarred: { type: Boolean, default: false },
     isDeleted: { type: Boolean, default: false },
     sharedWith: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+    // Document Permissions
+    permissions: {
+        canView: { type: Boolean, default: true },
+        canDownload: { type: Boolean, default: true },
+        canEdit: { type: Boolean, default: false },
+        preventScreenshot: { type: Boolean, default: false },
+        watermark: { type: Boolean, default: false }
+    },
+    accessLevel: { type: String, enum: ['public', 'private', 'restricted'], default: 'private' },
     versions: [{
         versionNumber: { type: Number, default: 1 },
         fileUrl: { type: String },
