@@ -14,8 +14,8 @@ const Home = () => {
     <div className="min-h-screen">
       <Navbar />
       <Hero />
-      <Features />
       <PublicDocuments />
+      <Features />
       <HowItWorks />
       <Pricing />
       <Testimonials />
