@@ -62,8 +62,15 @@ const MSWordOnline = ({ doc, onClose, onRefresh }) => {
                 const pdfBytes = await pdfDoc.save();
                 const blob = new Blob([pdfBytes], { type: 'application/pdf' });
                 setPdfUrl(URL.createObjectURL(blob));
-            } else if (doc.fileType.includes('word') || doc.fileType.includes('officedocument')) {
+            } else if ((doc.fileType.includes('word') || doc.fileType.includes('officedocument.word') || doc.fileName.endsWith('.docx') || doc.fileName.endsWith('.doc')) && !doc.fileType.includes('spreadsheet') && !doc.fileType.includes('presentation')) {
                 setMode('word');
+                
+                // Validate if it's a valid ZIP-based file (DOCX/XLSX/PPTX start with PK)
+                const bytes = new Uint8Array(res.data);
+                if (bytes[0] !== 0x50 || bytes[1] !== 0x4B) {
+                    throw new Error("Invalid file format: This file does not appear to be a valid .docx document (missing ZIP header).");
+                }
+
                 const result = await mammoth.convertToHtml({ arrayBuffer: res.data });
                 // Wait for editor to mount then set content
                 setTimeout(() => {
@@ -77,7 +84,10 @@ const MSWordOnline = ({ doc, onClose, onRefresh }) => {
             }
         } catch (err) {
             console.error('Editor Load Error:', err);
-            toast.error('Failed to load document for editing');
+            const msg = err.message.includes('ZIP header') 
+                ? 'Error: File is not a valid .docx (it might be an old .doc or corrupted)' 
+                : 'Failed to load document for editing';
+            toast.error(msg, { duration: 5000 });
             onClose();
         } finally {
             setLoading(false);

@@ -25,6 +25,12 @@ const PPTEditor = ({ doc, onClose, onRefresh }) => {
                 headers: { 'x-auth-token': token }
             });
 
+            // Validate ZIP header (PPTX files must start with PK)
+            const bytes = new Uint8Array(res.data);
+            if (bytes[0] !== 0x50 || bytes[1] !== 0x4B) {
+                throw new Error("Invalid format: This file is not a valid PowerPoint document (.pptx). Missing ZIP header.");
+            }
+
             const zip = await JSZip.loadAsync(res.data);
             const slideFiles = Object.keys(zip.files).filter(name => name.startsWith('ppt/slides/slide') && name.endsWith('.xml'));
             

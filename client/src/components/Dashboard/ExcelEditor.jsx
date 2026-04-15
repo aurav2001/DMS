@@ -28,6 +28,16 @@ const ExcelEditor = ({ doc, onClose, onRefresh }) => {
             });
 
             const wb = XLSX.read(res.data, { type: 'array' });
+            
+            // Basic validation: XLSX files should start with PK (0x50 0x4B)
+            // Note: CSVs won't have this, so we only check if the filename suggests it's an XLSX
+            if (doc.fileName.endsWith('.xlsx') || doc.fileName.endsWith('.pptx')) {
+                const bytes = new Uint8Array(res.data);
+                if (bytes[0] !== 0x50 || bytes[1] !== 0x4B) {
+                    throw new Error("Invalid format: This file claims to be a spreadsheet but is missing the required XLSX header.");
+                }
+            }
+
             setWorkbook(wb);
             setSheets(wb.SheetNames);
             
@@ -36,7 +46,10 @@ const ExcelEditor = ({ doc, onClose, onRefresh }) => {
             }
         } catch (err) {
             console.error('Excel Load Error:', err);
-            toast.error('Failed to load spreadsheet');
+            const msg = err.message.includes('Invalid format') 
+                ? 'Error: This file is not a valid Excel document (.xlsx)' 
+                : 'Failed to load spreadsheet';
+            toast.error(msg, { duration: 5000 });
             onClose();
         } finally {
             setLoading(false);

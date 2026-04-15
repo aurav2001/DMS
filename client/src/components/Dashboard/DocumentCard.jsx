@@ -83,7 +83,9 @@ const DocumentCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
   const isExcel = t.includes('spreadsheet') || t.includes('excel') || t.includes('csv') || f.endsWith('.xlsx') || f.endsWith('.xls') || f.endsWith('.csv') || s.endsWith('.xlsx') || s.endsWith('.xls') || s.endsWith('.csv');
   const isPPT = t.includes('presentation') || t.includes('powerpoint') || f.endsWith('.pptx') || f.endsWith('.ppt') || s.endsWith('.pptx') || s.endsWith('.ppt');
   const isWord = t.includes('word') || t.includes('officedocument.word') || f.endsWith('.docx') || f.endsWith('.doc') || s.endsWith('.docx') || s.endsWith('.doc');
-  const isEditorSupported = t.includes('pdf') || isWord || isExcel || isPPT;
+  const isPdf = t.includes('pdf') || f.endsWith('.pdf') || s.endsWith('.pdf');
+  
+  const isEditorSupported = isPdf || isWord || isExcel || isPPT;
 
   const handleSecureAction = async (action) => {
     try {
@@ -296,8 +298,14 @@ const DocumentCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
               <ExcelEditor doc={doc} onClose={() => setIsEditorOpen(false)} onRefresh={onRefresh} />
             ) : isPPT ? (
               <PPTEditor doc={doc} onClose={() => setIsEditorOpen(false)} onRefresh={onRefresh} />
-            ) : (
+            ) : isWord || isPdf ? (
               <MSWordOnline doc={doc} onClose={() => setIsEditorOpen(false)} onRefresh={onRefresh} />
+            ) : (
+              <div className="fixed inset-0 z-[200] bg-white flex flex-col items-center justify-center p-10">
+                <h2 className="text-xl font-bold mb-4">Unsupported Format</h2>
+                <p className="text-gray-500 mb-6">The editor doesn't support this specific file type yet.</p>
+                <button onClick={() => setIsEditorOpen(false)} className="px-6 py-2 bg-[#185abd] text-white rounded">Close</button>
+              </div>
             )}
           </React.Suspense>
         )}
