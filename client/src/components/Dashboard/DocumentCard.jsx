@@ -40,17 +40,23 @@ const DocumentCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
   const [editLoading, setEditLoading] = useState(false);
   const { user } = useAuth();
 
-  const getIcon = (type, fileName = '') => {
-    const t = type.toLowerCase();
-    const f = fileName.toLowerCase();
-    if (t.includes('image')) return <FileImage className="w-10 h-10 text-orange-500" />;
-    if (t.includes('pdf')) return <FileText className="w-10 h-10 text-red-500" />;
-    if (t.includes('spreadsheet') || t.includes('excel') || f.endsWith('.xlsx') || f.endsWith('.xls') || f.endsWith('.csv')) 
-        return <div className="bg-green-100 p-2 rounded-lg"><FileSpreadsheet className="w-10 h-10 text-green-600" /></div>;
-    if (t.includes('presentation') || t.includes('powerpoint') || f.endsWith('.pptx') || f.endsWith('.ppt')) 
-        return <div className="bg-red-100 p-2 rounded-lg"><Presentation className="w-10 h-10 text-red-600" /></div>;
-    if (t.includes('word') || t.includes('officedocument.word') || f.endsWith('.docx') || f.endsWith('.doc'))
-        return <div className="bg-blue-100 p-2 rounded-lg"><FileText className="w-10 h-10 text-blue-600" /></div>;
+  const getIcon = (type = '', fileName = '', title = '') => {
+    const t = (type || '').toLowerCase();
+    const f = (fileName || '').toLowerCase();
+    const s = (title || '').toLowerCase();
+    
+    // Icon matchers
+    const isImage = t.includes('image');
+    const isPdf = t.includes('pdf') || f.endsWith('.pdf') || s.endsWith('.pdf');
+    const isExcel = t.includes('spreadsheet') || t.includes('excel') || t.includes('csv') || f.endsWith('.xlsx') || f.endsWith('.xls') || f.endsWith('.csv') || s.endsWith('.xlsx') || s.endsWith('.xls') || s.endsWith('.csv');
+    const isPPT = t.includes('presentation') || t.includes('powerpoint') || f.endsWith('.pptx') || f.endsWith('.ppt') || s.endsWith('.pptx') || s.endsWith('.ppt');
+    const isWord = t.includes('word') || t.includes('officedocument.word') || f.endsWith('.docx') || f.endsWith('.doc') || s.endsWith('.docx') || s.endsWith('.doc');
+
+    if (isImage) return <FileImage className="w-10 h-10 text-orange-500" />;
+    if (isPdf) return <FileText className="w-10 h-10 text-red-500" />;
+    if (isExcel) return <div className="bg-green-100 p-2 rounded-lg"><FileSpreadsheet className="w-10 h-10 text-green-600" /></div>;
+    if (isPPT) return <div className="bg-red-100 p-2 rounded-lg"><Presentation className="w-10 h-10 text-red-600" /></div>;
+    if (isWord) return <div className="bg-blue-100 p-2 rounded-lg"><FileText className="w-10 h-10 text-blue-600" /></div>;
     if (t.includes('video')) return <FileVideo className="w-10 h-10 text-purple-500" />;
     if (t.includes('audio')) return <FileAudio className="w-10 h-10 text-green-500" />;
     if (t.includes('zip') || t.includes('compressed')) return <Archive className="w-10 h-10 text-amber-600" />;
@@ -69,10 +75,15 @@ const DocumentCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
   const canEdit = isOwner || isAdmin || doc.permissions?.canEdit === true;
   
   // Supported formats for full editor
-  const isExcel = doc.fileType.includes('spreadsheet') || doc.fileType.includes('excel') || doc.fileType.includes('csv') || doc.fileName.endsWith('.xlsx') || doc.fileName.endsWith('.xls') || doc.fileName.endsWith('.csv');
-  const isPPT = doc.fileType.includes('presentation') || doc.fileType.includes('powerpoint') || doc.fileName.endsWith('.pptx') || doc.fileName.endsWith('.ppt');
-  const isWord = doc.fileType.includes('word') || doc.fileType.includes('officedocument.word') || doc.fileName.endsWith('.docx') || doc.fileName.endsWith('.doc');
-  const isEditorSupported = doc.fileType.includes('pdf') || isWord || isExcel || isPPT;
+  // Robust Detection for Editor Support
+  const t = (doc.fileType || '').toLowerCase();
+  const f = (doc.fileName || '').toLowerCase();
+  const s = (doc.title || '').toLowerCase();
+
+  const isExcel = t.includes('spreadsheet') || t.includes('excel') || t.includes('csv') || f.endsWith('.xlsx') || f.endsWith('.xls') || f.endsWith('.csv') || s.endsWith('.xlsx') || s.endsWith('.xls') || s.endsWith('.csv');
+  const isPPT = t.includes('presentation') || t.includes('powerpoint') || f.endsWith('.pptx') || f.endsWith('.ppt') || s.endsWith('.pptx') || s.endsWith('.ppt');
+  const isWord = t.includes('word') || t.includes('officedocument.word') || f.endsWith('.docx') || f.endsWith('.doc') || s.endsWith('.docx') || s.endsWith('.doc');
+  const isEditorSupported = t.includes('pdf') || isWord || isExcel || isPPT;
 
   const handleSecureAction = async (action) => {
     try {
@@ -125,7 +136,7 @@ const DocumentCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
       >
         <div className="flex justify-between items-start mb-4">
           <div className="bg-slate-50 dark:bg-slate-800 p-1 rounded-2xl group-hover:bg-indigo-50 dark:group-hover:bg-indigo-500/10 transition-colors">
-            {getIcon(doc.fileType, doc.fileName)}
+            {getIcon(doc.fileType, doc.fileName, doc.title)}
           </div>
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             {canView && (
