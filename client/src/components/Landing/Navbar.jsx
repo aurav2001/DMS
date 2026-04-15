@@ -49,9 +49,9 @@ const Navbar = () => {
           </Link>
 
           {/* Desktop Nav */}
-          <div className="hidden md:flex items-center gap-8">
+            <div className="hidden md:flex items-center gap-8">
             {navLinks.map((link) => (
-              <a key={link.name} href={link.href} className="text-slate-600 dark:text-slate-300 hover:text-primary-600 dark:hover:text-primary-400 font-medium transition-colors">
+              <a key={link.name} href={link.href} className="text-slate-600 hover:text-primary-600 font-medium transition-colors">
                 {link.name}
               </a>
             ))}
@@ -61,7 +61,7 @@ const Navbar = () => {
           <div className="hidden md:flex items-center gap-4">
             {!user ? (
               <>
-                <Link to="/login" className="text-slate-600 dark:text-slate-300 font-medium hover:text-primary-600 dark:hover:text-primary-400 transition-colors">Login</Link>
+                <Link to="/login" className="text-slate-600 font-medium hover:text-primary-600 transition-colors">Login</Link>
                 <Link to="/register" className="btn-primary">Get Started</Link>
               </>
             ) : (
