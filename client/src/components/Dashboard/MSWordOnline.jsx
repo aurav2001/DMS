@@ -22,7 +22,7 @@ const COLORS = [
   '#990000', '#b45f06', '#bf9000', '#38761d', '#134f5c', '#0b5394', '#351c75', '#741b47',
 ];
 
-const WordProcessor = ({ doc, onClose, onRefresh }) => {
+const MSWordOnline = ({ doc, onClose, onRefresh }) => {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [mode, setMode] = useState('');
@@ -41,7 +41,7 @@ const WordProcessor = ({ doc, onClose, onRefresh }) => {
     const tabs = ['File', 'Home', 'Insert', 'Layout', 'Review', 'View'];
 
     useEffect(() => {
-        console.log('WordProcessor v4.0 (Final Fix) - Loading:', doc._id);
+        console.log('MSWordOnline v5.0 (Nuclear Purge) - Loading:', doc._id);
         loadDocument();
     }, [doc]);
 
@@ -307,7 +307,7 @@ const WordProcessor = ({ doc, onClose, onRefresh }) => {
                     <div className="flex items-center gap-2">
                         <FileText className="w-5 h-5 text-white" />
                         <span className="text-white text-sm font-semibold">{doc.title}</span>
-                        <span className="bg-yellow-400 text-blue-900 text-[10px] px-2 py-1 font-black rounded border-2 border-white animate-pulse">v4.0 MS WORD - LATEST</span>
+                        <span className="bg-yellow-400 text-blue-900 text-[10px] px-2 py-1 font-black rounded border-2 border-white animate-pulse">v5.0 MS WORD ONLINE - ACTIVE</span>
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -488,4 +488,4 @@ const WordProcessor = ({ doc, onClose, onRefresh }) => {
     );
 };
 
-export default WordProcessor;
+export default MSWordOnline;
