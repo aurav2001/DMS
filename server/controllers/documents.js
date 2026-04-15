@@ -60,32 +60,48 @@ const uploadDocument = async (req, res) => {
 
 const downloadDocument = async (req, res) => {
     try {
-        const document = await Document.findById(req.params.id);
+        const { versionNumber } = req.params;
+        let document = await Document.findById(req.params.id);
         if (!document) return res.status(404).json({ message: 'Document not found' });
+
+        // If a specific version is requested
+        let fileDataToRes = document.fileData;
+        let fileNameToRes = document.fileName;
+        let fileTypeToRes = document.fileType;
+        let fileSizeToRes = document.fileSize;
+        let storagePathToRes = document.storagePath;
+
+        if (versionNumber) {
+            const version = document.versions.find(v => v.versionNumber.toString() === versionNumber.toString());
+            if (!version) return res.status(404).json({ message: 'Version not found' });
+
+            if (version.fileData) fileDataToRes = version.fileData;
+            if (version.storagePath) storagePathToRes = version.storagePath;
+        }
 
         const access = checkAccess(document, req.user, 'download');
         if (!access.allowed) return res.status(access.status).json({ message: access.reason });
 
         res.set({
-            'Content-Type': document.fileType,
-            'Content-Disposition': `attachment; filename="${document.fileName || 'download'}"`,
+            'Content-Type': fileTypeToRes,
+            'Content-Disposition': `attachment; filename="${fileNameToRes || 'download'}"`,
         });
 
-        if (document.storageType === 'local' && document.storagePath) {
-            const filePath = path.join(__dirname, '../uploads', document.storagePath);
+        if (document.storageType === 'local' && storagePathToRes) {
+            const filePath = path.join(__dirname, '../uploads', storagePathToRes);
             if (fs.existsSync(filePath)) {
-                res.set('Content-Length', document.fileSize);
+                res.set('Content-Length', fileSizeToRes); // Note: might need exact size for old version
                 return fs.createReadStream(filePath).pipe(res);
             }
-        } else if (document.storageType === 'sftp' && document.storagePath) {
-            const data = await downloadFromSFTP(document.storagePath);
+        } else if (document.storageType === 'sftp' && storagePathToRes) {
+            const data = await downloadFromSFTP(storagePathToRes);
             res.set('Content-Length', data.length);
             return res.send(data);
         }
 
-        if (!document.fileData) return res.status(404).json({ message: 'File data not found' });
-        res.set('Content-Length', document.fileData.length);
-        res.send(document.fileData);
+        if (!fileDataToRes) return res.status(404).json({ message: 'File data not found' });
+        res.set('Content-Length', fileDataToRes.length);
+        res.send(fileDataToRes);
     } catch (err) {
         console.error('Download Error:', err);
         res.status(500).json({ message: err.message });
@@ -321,41 +337,55 @@ const updateDocumentVersion = async (req, res) => {
         const access = checkAccess(document, req.user, 'edit');
         if (!access.allowed) return res.status(access.status).json({ message: access.reason });
 
-        // Archive current version
-        const currentVersion = {
-            versionNumber: document.versions.length + 1,
+        const currentVersionNumber = document.versions.length + 1;
+        const archiveVersion = {
+            versionNumber: currentVersionNumber,
             fileUrl: document.fileUrl,
             storagePath: document.storagePath,
             fileData: document.fileData,
             updatedBy: req.user.id,
             updatedAt: Date.now()
         };
-        document.versions.push(currentVersion);
+        document.versions.push(archiveVersion);
+
+        const newVersionNumber = currentVersionNumber + 1;
 
         // Update with new data
         if (type === 'docx' && htmlContent) {
-            const docxBuffer = await HTMLtoDOCX(htmlContent, null, {
-                footer: true,
-                pageNumber: true,
-            });
-            
-            if (document.storageType === 'local') {
-                const newFileName = `v${currentVersion.versionNumber + 1}_${document.fileName}`;
-                const filePath = path.join(__dirname, '../uploads', newFileName);
-                fs.writeFileSync(filePath, docxBuffer);
-                document.storagePath = newFileName;
-            } else {
-                document.fileData = docxBuffer;
+            try {
+                const docxBuffer = await HTMLtoDOCX(htmlContent, null, {
+                    footer: true,
+                    pageNumber: true,
+                });
+                
+                if (document.storageType === 'local') {
+                    const newFileName = `v${newVersionNumber}_${document.fileName}`;
+                    const filePath = path.join(__dirname, '../uploads', newFileName);
+                    fs.writeFileSync(filePath, docxBuffer);
+                    document.storagePath = newFileName;
+                } else {
+                    document.fileData = docxBuffer;
+                }
+                document.fileSize = docxBuffer.length;
+            } catch (convErr) {
+                console.error('Word Conversion Error:', convErr);
+                return res.status(400).json({ message: 'Failed to convert HTML to DOCX' });
             }
-            document.fileSize = docxBuffer.length;
         } else if (req.file) {
             // If it's a PDF or direct file upload from editor
             if (document.storageType === 'local') {
-                document.storagePath = req.file.filename;
+                const newFileName = `v${newVersionNumber}_${req.file.originalname}`;
+                const filePath = path.join(__dirname, '../uploads', newFileName);
+                fs.writeFileSync(filePath, req.file.buffer);
+                document.storagePath = newFileName;
             } else {
                 document.fileData = req.file.buffer;
             }
             document.fileSize = req.file.size;
+            document.fileType = req.file.mimetype;
+            document.fileName = req.file.originalname;
+        } else {
+            return res.status(400).json({ message: 'No content or file provided for update' });
         }
 
         document.updatedAt = Date.now();
