@@ -14,16 +14,20 @@
     "autoprefixer": "^10.4.27",
     "axios": "^1.15.0",
     "framer-motion": "^12.38.0",
+    "jszip": "^3.10.1",
     "lucide-react": "^1.8.0",
     "mammoth": "^1.9.1",
     "pdf-lib": "^1.17.1",
     "postcss": "^8.5.9",
+    "pptxgenjs": "^4.0.1",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-dropzone": "^15.0.0",
     "react-hot-toast": "^2.6.0",
     "react-router-dom": "^7.14.0",
-    "tailwindcss": "^4.2.2"
+    "react-spreadsheet": "^0.10.1",
+    "tailwindcss": "^4.2.2",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",

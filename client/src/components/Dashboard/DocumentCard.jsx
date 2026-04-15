@@ -18,7 +18,9 @@ import {
   Edit3,
   Check,
   Loader2,
-  FileEdit
+  FileEdit,
+  FileSpreadsheet,
+  Presentation
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
@@ -26,6 +28,8 @@ import axios from 'axios';
 import toast from 'react-hot-toast';
 
 import MSWordOnline from './MSWordOnline';
+import ExcelEditor from './ExcelEditor';
+import PPTEditor from './PPTEditor';
 
 const DocumentCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
   const [showOptions, setShowOptions] = useState(false);
@@ -36,10 +40,17 @@ const DocumentCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
   const [editLoading, setEditLoading] = useState(false);
   const { user } = useAuth();
 
-  const getIcon = (type) => {
+  const getIcon = (type, fileName = '') => {
     const t = type.toLowerCase();
+    const f = fileName.toLowerCase();
     if (t.includes('image')) return <FileImage className="w-10 h-10 text-orange-500" />;
     if (t.includes('pdf')) return <FileText className="w-10 h-10 text-red-500" />;
+    if (t.includes('spreadsheet') || t.includes('excel') || f.endsWith('.xlsx') || f.endsWith('.xls') || f.endsWith('.csv')) 
+        return <div className="bg-green-100 p-2 rounded-lg"><FileSpreadsheet className="w-10 h-10 text-green-600" /></div>;
+    if (t.includes('presentation') || t.includes('powerpoint') || f.endsWith('.pptx') || f.endsWith('.ppt')) 
+        return <div className="bg-red-100 p-2 rounded-lg"><Presentation className="w-10 h-10 text-red-600" /></div>;
+    if (t.includes('word') || t.includes('officedocument.word') || f.endsWith('.docx') || f.endsWith('.doc'))
+        return <div className="bg-blue-100 p-2 rounded-lg"><FileText className="w-10 h-10 text-blue-600" /></div>;
     if (t.includes('video')) return <FileVideo className="w-10 h-10 text-purple-500" />;
     if (t.includes('audio')) return <FileAudio className="w-10 h-10 text-green-500" />;
     if (t.includes('zip') || t.includes('compressed')) return <Archive className="w-10 h-10 text-amber-600" />;
@@ -58,7 +69,10 @@ const DocumentCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
   const canEdit = isOwner || isAdmin || doc.permissions?.canEdit === true;
   
   // Supported formats for full editor
-  const isEditorSupported = doc.fileType.includes('pdf') || doc.fileType.includes('word') || doc.fileType.includes('officedocument');
+  const isExcel = doc.fileType.includes('spreadsheet') || doc.fileType.includes('excel') || doc.fileType.includes('csv') || doc.fileName.endsWith('.xlsx') || doc.fileName.endsWith('.xls') || doc.fileName.endsWith('.csv');
+  const isPPT = doc.fileType.includes('presentation') || doc.fileType.includes('powerpoint') || doc.fileName.endsWith('.pptx') || doc.fileName.endsWith('.ppt');
+  const isWord = doc.fileType.includes('word') || doc.fileType.includes('officedocument.word') || doc.fileName.endsWith('.docx') || doc.fileName.endsWith('.doc');
+  const isEditorSupported = doc.fileType.includes('pdf') || isWord || isExcel || isPPT;
 
   const handleSecureAction = async (action) => {
     try {
@@ -110,8 +124,8 @@ const DocumentCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
         className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-100 dark:border-slate-800 hover:shadow-2xl transition-all group relative"
       >
         <div className="flex justify-between items-start mb-4">
-          <div className="bg-slate-50 dark:bg-slate-800 p-3 rounded-2xl group-hover:bg-indigo-50 dark:group-hover:bg-indigo-500/10 transition-colors">
-            {getIcon(doc.fileType)}
+          <div className="bg-slate-50 dark:bg-slate-800 p-1 rounded-2xl group-hover:bg-indigo-50 dark:group-hover:bg-indigo-500/10 transition-colors">
+            {getIcon(doc.fileType, doc.fileName)}
           </div>
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             {canView && (
@@ -267,11 +281,13 @@ const DocumentCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
               <Loader2 className="w-12 h-12 text-indigo-500 animate-spin" />
             </div>
           }>
-            <MSWordOnline 
-              doc={doc} 
-              onClose={() => setIsEditorOpen(false)} 
-              onRefresh={onRefresh} 
-            />
+            {isExcel ? (
+              <ExcelEditor doc={doc} onClose={() => setIsEditorOpen(false)} onRefresh={onRefresh} />
+            ) : isPPT ? (
+              <PPTEditor doc={doc} onClose={() => setIsEditorOpen(false)} onRefresh={onRefresh} />
+            ) : (
+              <MSWordOnline doc={doc} onClose={() => setIsEditorOpen(false)} onRefresh={onRefresh} />
+            )}
           </React.Suspense>
         )}
       </AnimatePresence>
