@@ -41,6 +41,7 @@ const DocumentEditor = ({ doc, onClose, onRefresh }) => {
     const tabs = ['File', 'Home', 'Insert', 'Layout', 'Review', 'View'];
 
     useEffect(() => {
+        console.log('DocVault Editor v2.1 (Headers Fix) - Loading Doc:', doc._id);
         loadDocument();
     }, [doc]);
 
