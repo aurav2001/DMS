@@ -22,7 +22,7 @@ const COLORS = [
   '#990000', '#b45f06', '#bf9000', '#38761d', '#134f5c', '#0b5394', '#351c75', '#741b47',
 ];
 
-const DocumentEditor = ({ doc, onClose, onRefresh }) => {
+const EditorSuite = ({ doc, onClose, onRefresh }) => {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [mode, setMode] = useState('');
@@ -41,7 +41,7 @@ const DocumentEditor = ({ doc, onClose, onRefresh }) => {
     const tabs = ['File', 'Home', 'Insert', 'Layout', 'Review', 'View'];
 
     useEffect(() => {
-        console.log('DocVault Editor v2.1 (Headers Fix) - Loading Doc:', doc._id);
+        console.log('EditorSuite v3.0 (Cache Busting) - Loading Doc:', doc._id);
         loadDocument();
     }, [doc]);
 
@@ -50,7 +50,7 @@ const DocumentEditor = ({ doc, onClose, onRefresh }) => {
             setLoading(true);
             const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
             const token = localStorage.getItem('token');
-            const res = await axios.get(`${API_BASE}/documents/download/${doc._id}`, {
+            const res = await axios.get(`${API_BASE}/documents/download/${doc._id}?t=${Date.now()}`, {
                 responseType: 'arraybuffer',
                 headers: { 'x-auth-token': token }
             });
@@ -488,4 +488,4 @@ const DocumentEditor = ({ doc, onClose, onRefresh }) => {
     );
 };
 
-export default DocumentEditor;
+export default EditorSuite;
