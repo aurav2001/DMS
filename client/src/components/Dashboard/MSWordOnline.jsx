@@ -317,7 +317,7 @@ const MSWordOnline = ({ doc, onClose, onRefresh }) => {
                     <div className="flex items-center gap-2">
                         <FileText className="w-5 h-5 text-white" />
                         <span className="text-white text-sm font-semibold">{doc.title}</span>
-                        <span className="bg-yellow-400 text-blue-900 text-[10px] px-2 py-1 font-black rounded border-2 border-white animate-pulse">v5.0 MS WORD ONLINE - ACTIVE</span>
+                        <span className="bg-yellow-400 text-blue-900 text-[10px] px-2 py-1 font-black rounded border-2 border-white animate-pulse uppercase tracking-[0.1em]">v5.5 - NUCLEAR BUST - ACTIVE</span>
                     </div>
                 </div>
                 <div className="flex items-center gap-2">

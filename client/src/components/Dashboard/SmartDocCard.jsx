@@ -28,10 +28,10 @@ import axios from 'axios';
 import toast from 'react-hot-toast';
 
 import MSWordOnline from './MSWordOnline';
-import ExcelEditor from './ExcelEditor';
-import PPTEditor from './PPTEditor';
+import ExcelEditor from './SpreadsheetEngine';
+import PPTEditor from './PresentationEngine';
 
-const DocumentCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
+const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
   const [showOptions, setShowOptions] = useState(false);
   const [viewState, setViewState] = useState({ isOpen: false, url: null });
   const [isEditing, setIsEditing] = useState(false); // For Metadata Rename
@@ -227,7 +227,9 @@ const DocumentCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
           </div>
 
           <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-50 dark:border-white/5">
-            <span>{(doc.fileSize / 1024 / 1024).toFixed(2)} MB</span>
+            <span>
+              <span className="bg-yellow-400 text-blue-900 text-[10px] px-2 py-1 font-black rounded border-2 border-white animate-pulse uppercase tracking-widest">v5.5 - NUCLEAR BUST - ACTIVE</span> {(doc.fileSize / 1024 / 1024).toFixed(2)} MB
+            </span>
             <span>{formatDate(doc.createdAt)}</span>
           </div>
         </div>
@@ -346,4 +348,4 @@ const DocumentCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
   );
 };
 
-export default DocumentCard;
+export default SmartDocCard;
