@@ -25,7 +25,7 @@ import { useAuth } from '../../context/AuthContext';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 
-import EditorSuite from './EditorSuite';
+import ProfessionalEditor from './ProfessionalEditor';
 
 const DocumentCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
   const [showOptions, setShowOptions] = useState(false);
@@ -267,7 +267,7 @@ const DocumentCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
               <Loader2 className="w-12 h-12 text-indigo-500 animate-spin" />
             </div>
           }>
-            <EditorSuite 
+            <ProfessionalEditor 
               doc={doc} 
               onClose={() => setIsEditorOpen(false)} 
               onRefresh={onRefresh} 
