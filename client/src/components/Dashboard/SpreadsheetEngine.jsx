@@ -134,31 +134,32 @@ const ExcelEditor = ({ doc, onClose, onRefresh, viewOnly = false, viewerEmail = 
     return (
         <div className="fixed inset-0 z-[200] bg-[#f8f9fa] flex flex-col font-sans">
             {/* Header / Ribbon */}
-            <div className="h-14 bg-[#1d6f42] flex items-center justify-between px-4 shadow-md">
-                <div className="flex items-center gap-4">
-                    <div className="bg-white/20 p-1.5 rounded-lg">
-                        <FileSpreadsheet className="w-6 h-6 text-white" />
+            <div className="h-14 bg-[#1d6f42] flex items-center justify-between gap-2 px-3 sm:px-4 shadow-md">
+                <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
+                    <div className="bg-white/20 p-1.5 rounded-lg shrink-0">
+                        <FileSpreadsheet className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                     </div>
-                    <div>
-                        <h2 className="text-white font-bold text-sm leading-tight">{doc.title}</h2>
-                        <p className="text-green-100 text-[10px] uppercase font-bold tracking-wider">Excel Online Editor</p>
+                    <div className="min-w-0">
+                        <h2 className="text-white font-bold text-xs sm:text-sm leading-tight truncate">{doc.title}</h2>
+                        <p className="text-green-100 text-[10px] uppercase font-bold tracking-wider hidden sm:block">Excel Online Editor</p>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 shrink-0">
                     {viewOnly ? (
-                        <span className="px-4 py-1.5 bg-white/20 text-white text-[10px] font-black rounded-full uppercase tracking-widest">View Only</span>
+                        <span className="px-3 sm:px-4 py-1 sm:py-1.5 bg-white/20 text-white text-[10px] font-black rounded-full uppercase tracking-widest">View Only</span>
                     ) : (
                         <button
                             onClick={handleSave}
                             disabled={saving}
-                            className="flex items-center gap-2 px-5 py-2 bg-white text-[#1d6f42] hover:bg-green-50 disabled:opacity-50 text-xs font-bold rounded-full transition-all shadow-sm"
+                            className="flex items-center gap-2 px-3 sm:px-5 py-1.5 sm:py-2 bg-white text-[#1d6f42] hover:bg-green-50 disabled:opacity-50 text-xs font-bold rounded-full transition-all shadow-sm"
                         >
                             {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-                            {saving ? 'Saving...' : 'Save Changes'}
+                            <span className="hidden sm:inline">{saving ? 'Saving...' : 'Save Changes'}</span>
+                            <span className="sm:hidden">{saving ? '...' : 'Save'}</span>
                         </button>
                     )}
-                    <button 
+                    <button
                         onClick={onClose}
                         className="p-2 hover:bg-red-500 hover:text-white text-white/80 rounded-full transition-all"
                     >
@@ -168,7 +169,7 @@ const ExcelEditor = ({ doc, onClose, onRefresh, viewOnly = false, viewerEmail = 
             </div>
 
             {/* Formula Bar Simulation */}
-            <div className="h-10 bg-white border-b border-gray-200 flex items-center px-4 gap-2">
+            <div className="h-10 bg-white border-b border-gray-200 flex items-center px-3 sm:px-4 gap-2">
                 <div className="flex items-center justify-center w-10 h-6 bg-gray-50 border border-gray-200 rounded text-[10px] font-bold text-gray-500">fx</div>
                 <input 
                     className="flex-1 h-7 px-2 text-sm focus:outline-none focus:ring-1 focus:ring-[#1d6f42] rounded border border-transparent hover:border-gray-200"
@@ -182,7 +183,7 @@ const ExcelEditor = ({ doc, onClose, onRefresh, viewOnly = false, viewerEmail = 
                 <style>{`@media print { body { display: none !important; } }`}</style>
             )}
             <div
-                className="flex-1 overflow-auto bg-gray-100 p-4 relative"
+                className="flex-1 overflow-auto bg-gray-100 p-2 sm:p-4 relative"
                 onContextMenu={viewOnly || doc.permissions?.preventScreenshot ? (e) => e.preventDefault() : undefined}
                 onCopy={doc.permissions?.preventScreenshot ? (e) => e.preventDefault() : undefined}
                 style={doc.permissions?.preventScreenshot ? { userSelect: 'none', WebkitUserSelect: 'none' } : undefined}
@@ -241,7 +242,7 @@ const ExcelEditor = ({ doc, onClose, onRefresh, viewOnly = false, viewerEmail = 
             </div>
 
             {/* Footer / Sheet Tabs */}
-            <div className="h-10 bg-[#f3f3f3] border-t border-gray-300 flex items-center px-4 gap-2">
+            <div className="h-10 bg-[#f3f3f3] border-t border-gray-300 flex items-center px-3 sm:px-4 gap-2 overflow-x-auto no-scrollbar">
                 <div className="flex items-center gap-1 bg-white border border-gray-300 rounded px-2 py-1 h-7">
                     <Plus className="w-3.5 h-3.5 text-gray-400 cursor-pointer hover:text-[#1d6f42]" />
                 </div>

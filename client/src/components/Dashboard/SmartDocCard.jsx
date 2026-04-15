@@ -145,15 +145,15 @@ const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
 
   return (
     <>
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-        className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-100 dark:border-slate-800 hover:shadow-2xl transition-all group relative"
+        className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-100 dark:border-slate-800 hover:shadow-2xl transition-all group relative min-w-0"
       >
-        <div className="flex justify-between items-start mb-4">
-          <div className="bg-slate-50 dark:bg-slate-800 p-1 rounded-2xl group-hover:bg-indigo-50 dark:group-hover:bg-indigo-500/10 transition-colors">
+        <div className="flex justify-between items-start mb-3 sm:mb-4 gap-2">
+          <div className="bg-slate-50 dark:bg-slate-800 p-1 rounded-2xl group-hover:bg-indigo-50 dark:group-hover:bg-indigo-500/10 transition-colors shrink-0">
             {getIcon(doc.fileType, doc.fileName, doc.title)}
           </div>
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="hidden sm:flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             {canView && (
               <button onClick={() => handleSecureAction('view')} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500 hover:text-indigo-500 transition-all" title="View">
                 <Eye className="w-4 h-4" />
@@ -175,7 +175,7 @@ const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
               </button>
             )}
           </div>
-          <button onClick={() => setShowOptions(!showOptions)} className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors">
+          <button onClick={() => setShowOptions(!showOptions)} className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors shrink-0">
             <MoreVertical className="w-5 h-5" />
           </button>
         </div>
@@ -353,17 +353,17 @@ const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
             className="fixed inset-0 z-[100] bg-slate-900/95 backdrop-blur-xl flex items-center justify-center p-4"
             onContextMenu={(e) => e.preventDefault()}
           >
-            <button 
-              onClick={() => setViewState({ isOpen: false, url: null })} 
-              className="absolute top-6 right-6 p-3 bg-white/10 hover:bg-red-500 text-white rounded-full transition-all z-[110] shadow-xl"
+            <button
+              onClick={() => setViewState({ isOpen: false, url: null })}
+              className="absolute top-3 right-3 sm:top-6 sm:right-6 p-2 sm:p-3 bg-white/10 hover:bg-red-500 text-white rounded-full transition-all z-[110] shadow-xl"
             >
-              <X className="w-6 h-6" />
+              <X className="w-5 h-5 sm:w-6 sm:h-6" />
             </button>
-            <div className="relative w-full max-w-6xl h-[90vh] bg-white rounded-3xl overflow-hidden shadow-2xl">
-              <iframe 
-                src={`${viewState.url}#toolbar=0`} 
-                className="w-full h-full border-0" 
-                title="Secure Viewer" 
+            <div className="relative w-full max-w-6xl h-[92vh] sm:h-[90vh] bg-white rounded-xl sm:rounded-3xl overflow-hidden shadow-2xl">
+              <iframe
+                src={`${viewState.url}#toolbar=0`}
+                className="w-full h-full border-0"
+                title="Secure Viewer"
               />
               <div className="absolute inset-0 z-10 pointer-events-none overflow-hidden flex flex-wrap content-around justify-center opacity-[0.03]">
                 {Array.from({length: 40}).map((_, i) => (

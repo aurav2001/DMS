@@ -165,7 +165,7 @@ const MSWordOnline = ({ doc, onClose, onRefresh, viewOnly = false, viewerEmail =
     const ToolbarSeparator = () => <div className="w-px h-6 bg-[#d1d1d1] mx-1" />;
 
     const renderHomeTab = () => (
-        <div className="flex items-center gap-0.5 px-2 py-1 flex-wrap">
+        <div className="flex items-center gap-0.5 px-2 py-1 min-w-max sm:flex-wrap sm:min-w-0">
             {/* Clipboard Group */}
             <div className="flex items-center gap-0.5 pr-2 border-r border-[#d1d1d1] mr-2">
                 <ToolbarButton icon={Clipboard} label="Paste" onClick={() => execCommand('paste')} />
@@ -308,7 +308,7 @@ const MSWordOnline = ({ doc, onClose, onRefresh, viewOnly = false, viewerEmail =
     );
 
     const renderInsertTab = () => (
-        <div className="flex items-center gap-0.5 px-2 py-1">
+        <div className="flex items-center gap-0.5 px-2 py-1 min-w-max">
             <ToolbarButton icon={Table} label="Insert Table" onClick={() => execCommand('insertHTML', '<table border="1" cellpadding="8" cellspacing="0" style="border-collapse:collapse; width:100%; border:1px solid #ccc;"><tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr><tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr><tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr></table>')} />
             <ToolbarButton icon={Image} label="Insert Image" onClick={() => {
                 const url = prompt('Enter image URL:');
@@ -326,11 +326,11 @@ const MSWordOnline = ({ doc, onClose, onRefresh, viewOnly = false, viewerEmail =
         <div className="fixed inset-0 z-[200] bg-[#f3f3f3] flex flex-col" onClick={() => { setShowFontPicker(false); setShowSizePicker(false); setShowColorPicker(false); setShowHighlightPicker(false); }}>
             
             {/* ===== Title Bar (Word Online style) ===== */}
-            <div className="h-10 bg-[#185abd] flex items-center justify-between px-4 shadow-sm">
-                <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-2">
-                        <FileText className="w-5 h-5 text-white" />
-                        <span className="text-white text-sm font-semibold">{doc.title}</span>
+            <div className="h-10 bg-[#185abd] flex items-center justify-between gap-2 px-2 sm:px-4 shadow-sm">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className="flex items-center gap-2 min-w-0">
+                        <FileText className="w-5 h-5 text-white shrink-0" />
+                        <span className="text-white text-xs sm:text-sm font-semibold truncate">{doc.title}</span>
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -356,8 +356,8 @@ const MSWordOnline = ({ doc, onClose, onRefresh, viewOnly = false, viewerEmail =
             </div>
 
             {/* ===== Ribbon Tabs ===== */}
-            <div className="bg-[#f3f3f3] border-b border-[#d1d1d1]">
-                <div className="flex items-center">
+            <div className="bg-[#f3f3f3] border-b border-[#d1d1d1] overflow-x-auto no-scrollbar">
+                <div className="flex items-center min-w-max">
                     {tabs.map(tab => (
                         <button
                             key={tab}
@@ -376,7 +376,7 @@ const MSWordOnline = ({ doc, onClose, onRefresh, viewOnly = false, viewerEmail =
 
             {/* ===== Ribbon Toolbar ===== */}
             {mode === 'word' && !viewOnly && (
-                <div className="bg-[#f3f3f3] border-b border-[#d1d1d1] min-h-[40px]" onClick={e => e.stopPropagation()}>
+                <div className="bg-[#f3f3f3] border-b border-[#d1d1d1] min-h-[40px] overflow-x-auto no-scrollbar" onClick={e => e.stopPropagation()}>
                     {activeTab === 'Home' && renderHomeTab()}
                     {activeTab === 'Insert' && renderInsertTab()}
                     {activeTab === 'Layout' && (
@@ -445,7 +445,7 @@ const MSWordOnline = ({ doc, onClose, onRefresh, viewOnly = false, viewerEmail =
                 <style>{`@media print { body { display: none !important; } }`}</style>
             )}
             <div
-                className="flex-1 overflow-auto bg-[#e8e8e8] flex justify-center py-8 px-4 relative"
+                className="flex-1 overflow-auto bg-[#e8e8e8] flex justify-center py-4 sm:py-8 px-2 sm:px-4 relative"
                 onContextMenu={viewOnly || doc.permissions?.preventScreenshot ? (e) => e.preventDefault() : undefined}
                 onCopy={doc.permissions?.preventScreenshot ? (e) => e.preventDefault() : undefined}
                 style={doc.permissions?.preventScreenshot ? { userSelect: 'none', WebkitUserSelect: 'none' } : undefined}

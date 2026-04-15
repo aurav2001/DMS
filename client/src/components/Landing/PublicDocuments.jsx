@@ -73,66 +73,66 @@ const PublicDocuments = () => {
   };
 
   return (
-    <section className="py-20 bg-slate-50 relative overflow-hidden" id="repository">
-      <div className="max-w-7xl mx-auto px-6 relative z-10">
-        
-        <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold mb-4 text-slate-900 border-b-2 border-indigo-500 inline-block pb-2">
+    <section className="py-14 sm:py-16 lg:py-20 bg-slate-50 relative overflow-hidden" id="repository">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10">
+
+        <div className="text-center mb-8 sm:mb-12">
+          <h2 className="text-2xl sm:text-3xl font-bold mb-3 sm:mb-4 text-slate-900 border-b-2 border-indigo-500 inline-block pb-2">
             Public Document Repository
           </h2>
-          <p className="text-slate-600 max-w-2xl mx-auto">
+          <p className="text-sm sm:text-base text-slate-600 max-w-2xl mx-auto px-2">
             Search, view, and download publicly available files issued by authorized sources in our system.
           </p>
         </div>
 
         {/* Search Bar */}
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-8 max-w-3xl mx-auto flex gap-4">
+        <div className="bg-white p-3 sm:p-4 rounded-xl shadow-sm border border-slate-200 mb-6 sm:mb-8 max-w-3xl mx-auto flex flex-col sm:flex-row gap-3 sm:gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-            <input 
-              type="text" 
-              placeholder="Document Name / Description" 
+            <input
+              type="text"
+              placeholder="Document Name / Description"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
             />
           </div>
-          <button 
+          <button
             onClick={fetchPublicData}
-            className="px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium transition-colors"
+            className="px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium transition-colors whitespace-nowrap"
           >
             Search
           </button>
         </div>
 
         {/* Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-          <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-6 text-center shadow-sm">
-            <h3 className="text-4xl font-bold text-blue-900 mb-2">{stats.totalDepartments}</h3>
-            <p className="text-blue-800 font-semibold text-sm uppercase tracking-wider">Total Categories</p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mb-8 sm:mb-12">
+          <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-4 sm:p-6 text-center shadow-sm">
+            <h3 className="text-3xl sm:text-4xl font-bold text-blue-900 mb-1 sm:mb-2">{stats.totalDepartments}</h3>
+            <p className="text-blue-800 font-semibold text-xs sm:text-sm uppercase tracking-wider">Total Categories</p>
           </div>
-          <div className="bg-red-50/50 border border-red-100 rounded-xl p-6 text-center shadow-sm">
-            <h3 className="text-4xl font-bold text-red-900 mb-2">{stats.totalIssuers}</h3>
-            <p className="text-red-800 font-semibold text-sm uppercase tracking-wider">Total Issuers</p>
+          <div className="bg-red-50/50 border border-red-100 rounded-xl p-4 sm:p-6 text-center shadow-sm">
+            <h3 className="text-3xl sm:text-4xl font-bold text-red-900 mb-1 sm:mb-2">{stats.totalIssuers}</h3>
+            <p className="text-red-800 font-semibold text-xs sm:text-sm uppercase tracking-wider">Total Issuers</p>
           </div>
-          <div className="bg-emerald-50/50 border border-emerald-100 rounded-xl p-6 text-center shadow-sm">
-            <h3 className="text-4xl font-bold text-emerald-900 mb-2">{stats.totalDocuments}</h3>
-            <p className="text-emerald-800 font-semibold text-sm uppercase tracking-wider">Total Documents</p>
+          <div className="bg-emerald-50/50 border border-emerald-100 rounded-xl p-4 sm:p-6 text-center shadow-sm">
+            <h3 className="text-3xl sm:text-4xl font-bold text-emerald-900 mb-1 sm:mb-2">{stats.totalDocuments}</h3>
+            <p className="text-emerald-800 font-semibold text-xs sm:text-sm uppercase tracking-wider">Total Documents</p>
           </div>
         </div>
 
         {/* Documents Table */}
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-          <div className="bg-slate-100/50 px-6 py-4 border-b border-slate-200 flex justify-between items-center">
-            <h4 className="flex items-center gap-2 font-semibold text-slate-700">
-              <Database className="w-5 h-5" /> 
-              Latest {documents.length > 0 ? documents.length : ''} Public Documents
+          <div className="bg-slate-100/50 px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-200 flex justify-between items-center gap-2">
+            <h4 className="flex items-center gap-2 font-semibold text-slate-700 text-sm sm:text-base">
+              <Database className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+              <span className="truncate">Latest {documents.length > 0 ? documents.length : ''} Public Documents</span>
             </h4>
-            {loading && <div className="animate-pulse w-24 h-4 bg-slate-300 rounded"></div>}
+            {loading && <div className="animate-pulse w-16 sm:w-24 h-4 bg-slate-300 rounded shrink-0"></div>}
           </div>
-          
+
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+            <table className="w-full text-left border-collapse min-w-[720px]">
               <thead>
                 <tr className="bg-slate-50 text-slate-600 text-sm border-b border-slate-200">
                   <th className="px-6 py-3 font-semibold pb-3">#</th>
@@ -211,16 +211,16 @@ const PublicDocuments = () => {
             onContextMenu={(e) => e.preventDefault()}
             style={{ WebkitUserSelect: 'none', userSelect: 'none' }}
           >
-            <button 
-              onClick={() => setViewState({ isOpen: false, url: null, doc: null })} 
-              className="absolute top-6 right-6 p-2 bg-white/10 hover:bg-red-500 text-white rounded-full transition-colors z-[70]"
+            <button
+              onClick={() => setViewState({ isOpen: false, url: null, doc: null })}
+              className="absolute top-3 right-3 sm:top-6 sm:right-6 p-2 bg-white/10 hover:bg-red-500 text-white rounded-full transition-colors z-[70]"
             >
-              <X className="w-6 h-6" />
+              <X className="w-5 h-5 sm:w-6 sm:h-6" />
             </button>
-            <div className="relative w-full max-w-5xl h-[85vh] bg-white rounded-xl overflow-hidden shadow-2xl ring-1 ring-white/10 flex flex-col">
+            <div className="relative w-full max-w-5xl h-[90vh] sm:h-[85vh] bg-white rounded-xl overflow-hidden shadow-2xl ring-1 ring-white/10 flex flex-col">
               {viewState.isWord ? (
-                <div 
-                  className="flex-1 overflow-auto p-8 md:p-16 bg-white prose prose-slate max-w-none break-words pointer-events-auto" 
+                <div
+                  className="flex-1 overflow-auto p-4 sm:p-8 md:p-16 bg-white prose prose-slate max-w-none break-words pointer-events-auto"
                   dangerouslySetInnerHTML={{ __html: viewState.htmlContent }} 
                 />
               ) : (

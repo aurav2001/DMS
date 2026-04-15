@@ -122,46 +122,47 @@ const PPTEditor = ({ doc, onClose, onRefresh, viewOnly = false, viewerEmail = ''
     return (
         <div className="fixed inset-0 z-[200] bg-[#f0f2f5] flex flex-col font-sans">
             {/* Header */}
-            <div className="h-14 bg-[#b7472a] flex items-center justify-between px-4 shadow-lg z-50">
-                <div className="flex items-center gap-3">
-                    <div className="bg-white/20 p-2 rounded-xl">
-                        <Presentation className="w-6 h-6 text-white" />
+            <div className="h-14 bg-[#b7472a] flex items-center justify-between gap-2 px-3 sm:px-4 shadow-lg z-50">
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                    <div className="bg-white/20 p-2 rounded-xl shrink-0">
+                        <Presentation className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                     </div>
-                    <div>
-                        <h2 className="text-white font-bold text-sm">{doc.title}</h2>
+                    <div className="min-w-0">
+                        <h2 className="text-white font-bold text-xs sm:text-sm truncate">{doc.title}</h2>
                         <div className="flex items-center gap-2">
-                            <span className="bg-white/20 text-white text-[9px] px-1.5 py-0.5 rounded font-black uppercase tracking-wider">PPT Editor v1.0</span>
+                            <span className="bg-white/20 text-white text-[9px] px-1.5 py-0.5 rounded font-black uppercase tracking-wider hidden sm:inline">PPT Editor v1.0</span>
                             <span className="text-red-100 text-[10px] font-medium opacity-80">Slide {activeSlideIndex + 1} of {slides.length}</span>
                         </div>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 sm:gap-3 shrink-0">
                     {viewOnly ? (
-                        <span className="px-5 py-2 bg-white/20 text-white text-[10px] font-black rounded-full uppercase tracking-widest">View Only</span>
+                        <span className="px-3 sm:px-5 py-1.5 sm:py-2 bg-white/20 text-white text-[10px] font-black rounded-full uppercase tracking-widest">View Only</span>
                     ) : (
                         <button
                             onClick={handleSave}
                             disabled={saving}
-                            className="flex items-center gap-2 px-6 py-2 bg-white text-[#b7472a] hover:bg-red-50 disabled:opacity-50 text-xs font-black rounded-full transition-all shadow-md group"
+                            className="flex items-center gap-2 px-3 sm:px-6 py-1.5 sm:py-2 bg-white text-[#b7472a] hover:bg-red-50 disabled:opacity-50 text-xs font-black rounded-full transition-all shadow-md group"
                         >
                             {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-4 h-4 group-hover:scale-110 transition-transform" />}
-                            {saving ? 'Processing...' : 'Export & Save'}
+                            <span className="hidden sm:inline">{saving ? 'Processing...' : 'Export & Save'}</span>
+                            <span className="sm:hidden">{saving ? '...' : 'Save'}</span>
                         </button>
                     )}
-                    <button 
+                    <button
                         onClick={onClose}
-                        className="p-2.5 hover:bg-white/10 text-white rounded-full transition-all"
+                        className="p-2 sm:p-2.5 hover:bg-white/10 text-white rounded-full transition-all"
                     >
                         <X className="w-5 h-5" />
                     </button>
                 </div>
             </div>
 
-            <div className="flex-1 flex overflow-hidden">
+            <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
                 {/* Sidebar (Thumbnails) */}
-                <div className="w-64 bg-white border-r border-gray-200 overflow-y-auto p-4 flex flex-col gap-4">
-                    <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2 mb-2">Slides Overview</h3>
+                <div className="w-full md:w-64 bg-white border-b md:border-b-0 md:border-r border-gray-200 overflow-y-auto md:overflow-y-auto overflow-x-auto md:overflow-x-hidden p-3 sm:p-4 flex md:flex-col gap-3 sm:gap-4 shrink-0 max-h-32 md:max-h-none">
+                    <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2 mb-2 hidden md:block">Slides Overview</h3>
                     {loading ? (
                         Array.from({length: 3}).map((_, i) => (
                             <div key={i} className="aspect-video bg-gray-100 animate-pulse rounded-lg border-2 border-transparent" />
@@ -171,7 +172,7 @@ const PPTEditor = ({ doc, onClose, onRefresh, viewOnly = false, viewerEmail = ''
                             <button
                                 key={slide.id}
                                 onClick={() => setActiveSlideIndex(idx)}
-                                className={`group relative aspect-video rounded-lg border-2 transition-all p-3 text-[8px] text-gray-400 overflow-hidden text-left ${
+                                className={`group relative aspect-video w-32 md:w-auto shrink-0 md:shrink rounded-lg border-2 transition-all p-3 text-[8px] text-gray-400 overflow-hidden text-left ${
                                     activeSlideIndex === idx 
                                     ? 'border-[#b7472a] bg-red-50 shadow-md ring-4 ring-red-500/10' 
                                     : 'border-gray-100 hover:border-gray-200 bg-gray-50'
@@ -193,7 +194,7 @@ const PPTEditor = ({ doc, onClose, onRefresh, viewOnly = false, viewerEmail = ''
                     <style>{`@media print { body { display: none !important; } }`}</style>
                 )}
                 <div
-                    className="flex-1 bg-gray-200/50 p-8 flex flex-col items-center overflow-auto relative"
+                    className="flex-1 bg-gray-200/50 p-4 sm:p-6 md:p-8 flex flex-col items-center overflow-auto relative"
                     onContextMenu={viewOnly || doc.permissions?.preventScreenshot ? (e) => e.preventDefault() : undefined}
                     onCopy={doc.permissions?.preventScreenshot ? (e) => e.preventDefault() : undefined}
                     style={doc.permissions?.preventScreenshot ? { userSelect: 'none', WebkitUserSelect: 'none' } : undefined}
@@ -239,11 +240,11 @@ const PPTEditor = ({ doc, onClose, onRefresh, viewOnly = false, viewerEmail = ''
                                 </div>
                             </div>
 
-                            <div className="bg-white rounded-2xl shadow-2xl p-10 min-h-[500px] flex flex-col border border-gray-100">
+                            <div className="bg-white rounded-2xl shadow-2xl p-5 sm:p-8 md:p-10 min-h-[350px] md:min-h-[500px] flex flex-col border border-gray-100">
                                 <div className="flex-1 flex flex-col gap-4">
                                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Global Slide Text</label>
                                     <textarea
-                                        className="flex-1 w-full p-6 text-xl text-gray-700 bg-gray-50 rounded-xl focus:ring-4 focus:ring-red-500/5 focus:outline-none border-2 border-transparent focus:border-[#b7472a]/20 transition-all resize-none leading-relaxed"
+                                        className="flex-1 w-full p-4 sm:p-6 text-base sm:text-xl text-gray-700 bg-gray-50 rounded-xl focus:ring-4 focus:ring-red-500/5 focus:outline-none border-2 border-transparent focus:border-[#b7472a]/20 transition-all resize-none leading-relaxed"
                                         placeholder="Start typing slide content..."
                                         value={slides[activeSlideIndex].text}
                                         readOnly={viewOnly}
