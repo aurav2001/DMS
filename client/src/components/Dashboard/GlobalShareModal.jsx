@@ -81,25 +81,25 @@ const GlobalShareModal = ({ onClose, onSuccess }) => {
     );
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-md">
-            <motion.div 
+        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/60 backdrop-blur-md">
+            <motion.div
                 initial={{ opacity: 0, scale: 0.9, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden border dark:border-slate-800"
+                className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden border dark:border-slate-800 max-h-[95vh] flex flex-col"
             >
                 {/* Header */}
-                <div className="p-6 border-b dark:border-slate-800 flex items-center justify-between">
-                    <div>
-                        <h2 className="text-2xl font-bold dark:text-white">Share a File</h2>
-                        <p className="text-sm text-slate-500">Step {step} of 2: {step === 1 ? 'Select a file' : 'Enter recipient'}</p>
+                <div className="p-4 sm:p-6 border-b dark:border-slate-800 flex items-center justify-between shrink-0">
+                    <div className="min-w-0">
+                        <h2 className="text-lg sm:text-2xl font-bold dark:text-white">Share a File</h2>
+                        <p className="text-xs sm:text-sm text-slate-500 truncate">Step {step} of 2: {step === 1 ? 'Select a file' : 'Enter recipient'}</p>
                     </div>
-                    <button onClick={onClose} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">
-                        <X className="w-6 h-6 dark:text-slate-400" />
+                    <button onClick={onClose} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors shrink-0">
+                        <X className="w-5 h-5 sm:w-6 sm:h-6 dark:text-slate-400" />
                     </button>
                 </div>
 
-                <div className="p-6">
+                <div className="p-4 sm:p-6 overflow-y-auto">
                     {step === 1 ? (
                         <div className="space-y-4">
                             <div className="relative">
@@ -148,15 +148,15 @@ const GlobalShareModal = ({ onClose, onSuccess }) => {
                         </div>
                     ) : (
                         <div className="space-y-6">
-                            <div className="flex items-center gap-4 p-4 bg-primary-50 dark:bg-primary-900/10 rounded-2xl border border-primary-100 dark:border-primary-900/20">
-                                <div className="bg-white dark:bg-slate-800 p-2 rounded-lg shadow-sm">
+                            <div className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 bg-primary-50 dark:bg-primary-900/10 rounded-2xl border border-primary-100 dark:border-primary-900/20">
+                                <div className="bg-white dark:bg-slate-800 p-2 rounded-lg shadow-sm shrink-0">
                                     {getDocIcon(selectedDoc?.fileType)}
                                 </div>
-                                <div className="overflow-hidden">
-                                    <p className="text-xs text-primary-600 dark:text-primary-400 font-bold uppercase tracking-wider">Sharing document</p>
-                                    <p className="font-bold dark:text-white truncate">{selectedDoc?.title}</p>
+                                <div className="min-w-0 flex-1">
+                                    <p className="text-[10px] sm:text-xs text-primary-600 dark:text-primary-400 font-bold uppercase tracking-wider">Sharing document</p>
+                                    <p className="font-bold dark:text-white truncate text-sm sm:text-base">{selectedDoc?.title}</p>
                                 </div>
-                                <button onClick={() => setStep(1)} className="ml-auto text-xs font-bold text-primary-600 hover:underline">Change</button>
+                                <button onClick={() => setStep(1)} className="ml-auto text-xs font-bold text-primary-600 hover:underline shrink-0">Change</button>
                             </div>
 
                             <div className="space-y-4">

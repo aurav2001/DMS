@@ -36,21 +36,21 @@ const AddUserModal = ({ onClose, onSuccess }) => {
     };
 
     return (
-        <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 overflow-y-auto">
+        <div className="fixed inset-0 z-[999] flex items-end sm:items-center justify-center p-0 sm:p-4 overflow-y-auto">
             <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md" onClick={onClose}></div>
-            
-            <div className="relative bg-slate-900 border border-white/10 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-300 my-8">
-                <div className="px-8 py-6 border-b border-white/5 flex justify-between items-center bg-white/5">
-                    <div>
-                        <h3 className="text-xl font-bold text-white">Create New User</h3>
-                        <p className="text-sm text-slate-400">Complete the form to register a user</p>
+
+            <div className="relative bg-slate-900 border border-white/10 rounded-t-3xl sm:rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-300 sm:my-8 max-h-[95vh] flex flex-col">
+                <div className="px-5 sm:px-8 py-4 sm:py-6 border-b border-white/5 flex justify-between items-center bg-white/5 shrink-0">
+                    <div className="min-w-0">
+                        <h3 className="text-lg sm:text-xl font-bold text-white">Create New User</h3>
+                        <p className="text-xs sm:text-sm text-slate-400">Complete the form to register a user</p>
                     </div>
-                    <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full text-slate-400 transition-colors">
-                        <X className="w-6 h-6" />
+                    <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full text-slate-400 transition-colors shrink-0">
+                        <X className="w-5 h-5 sm:w-6 sm:h-6" />
                     </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="p-8 space-y-5">
+                <form onSubmit={handleSubmit} className="p-5 sm:p-8 space-y-4 sm:space-y-5 overflow-y-auto">
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-slate-300 ml-1">Full Name</label>
                         <div className="relative">
@@ -59,7 +59,7 @@ const AddUserModal = ({ onClose, onSuccess }) => {
                                 required
                                 type="text"
                                 placeholder="Enter full name"
-                                className="w-full bg-white/5 border border-white/10 rounded-2xl py-3.5 pl-12 pr-4 text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
+                                className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 sm:py-3.5 pl-12 pr-4 text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
                                 value={formData.name}
                                 onChange={(e) => setFormData({...formData, name: e.target.value})}
                             />
@@ -74,7 +74,7 @@ const AddUserModal = ({ onClose, onSuccess }) => {
                                 required
                                 type="email"
                                 placeholder="user@example.com"
-                                className="w-full bg-white/5 border border-white/10 rounded-2xl py-3.5 pl-12 pr-4 text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
+                                className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 sm:py-3.5 pl-12 pr-4 text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
                                 value={formData.email}
                                 onChange={(e) => setFormData({...formData, email: e.target.value})}
                             />
@@ -89,7 +89,7 @@ const AddUserModal = ({ onClose, onSuccess }) => {
                                 required
                                 type="password"
                                 placeholder="Set password"
-                                className="w-full bg-white/5 border border-white/10 rounded-2xl py-3.5 pl-12 pr-4 text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
+                                className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 sm:py-3.5 pl-12 pr-4 text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
                                 value={formData.password}
                                 onChange={(e) => setFormData({...formData, password: e.target.value})}
                             />
@@ -116,14 +116,14 @@ const AddUserModal = ({ onClose, onSuccess }) => {
                         <button 
                             type="button" 
                             onClick={onClose}
-                            className="flex-1 py-4 bg-white/5 hover:bg-white/10 text-white font-semibold rounded-2xl transition-all border border-white/10"
+                            className="flex-1 py-3 sm:py-4 bg-white/5 hover:bg-white/10 text-white font-semibold rounded-2xl transition-all border border-white/10"
                         >
                             Cancel
                         </button>
                         <button 
                             type="submit" 
                             disabled={loading}
-                            className="flex-1 py-4 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-2xl transition-all shadow-lg shadow-indigo-600/20 flex items-center justify-center gap-2 group"
+                            className="flex-1 py-3 sm:py-4 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-2xl transition-all shadow-lg shadow-indigo-600/20 flex items-center justify-center gap-2 group"
                         >
                             {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Create Account'}
                         </button>

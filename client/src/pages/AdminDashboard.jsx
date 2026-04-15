@@ -73,9 +73,13 @@ const AdminDashboard = () => {
 
   const updatePermissions = async (docId, permissions, accessLevel) => {
     try {
-      await axios.patch(`${API_BASE}/admin/documents/${docId}/permissions`, { permissions, accessLevel });
-      setDocuments(prev => prev.map(d => d._id === docId ? { ...d, permissions, accessLevel } : d));
-    } catch (err) { console.error(err); }
+      const res = await axios.patch(`${API_BASE}/admin/documents/${docId}/permissions`, { permissions, accessLevel });
+      const updated = res.data;
+      setDocuments(prev => prev.map(d => d._id === docId ? { ...d, ...updated } : d));
+    } catch (err) {
+      console.error(err);
+      alert(err.response?.data?.message || 'Failed to update permissions');
+    }
   };
 
   const formatBytes = (bytes) => {
@@ -104,40 +108,40 @@ const AdminDashboard = () => {
     <div className="min-h-screen bg-gradient-to-br from-[#020617] via-[#050811] to-[#080d1a] text-white">
       {/* Header */}
       <header className="border-b border-white/10 bg-black/20 backdrop-blur-xl sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <button onClick={() => navigate('/dashboard')} className="p-2 hover:bg-white/10 rounded-lg transition">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
+            <button onClick={() => navigate('/dashboard')} className="p-2 hover:bg-white/10 rounded-lg transition shrink-0">
               <ArrowLeft className="w-5 h-5" />
             </button>
-            <div className="flex items-center gap-3">
-              <div className="bg-gradient-to-r from-red-500 to-orange-500 p-2 rounded-xl">
-                <Shield className="w-6 h-6" />
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+              <div className="bg-gradient-to-r from-red-500 to-orange-500 p-2 rounded-xl shrink-0">
+                <Shield className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
-              <div>
-                <h1 className="text-xl font-bold">Admin Dashboard</h1>
-                <p className="text-xs text-slate-400">DocVault Management Console</p>
+              <div className="min-w-0">
+                <h1 className="text-base sm:text-xl font-bold truncate">Admin Dashboard</h1>
+                <p className="text-xs text-slate-400 hidden sm:block truncate">DocVault Management Console</p>
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 shrink-0">
             <div className="text-right">
-              <p className="text-sm font-medium">{user?.name}</p>
+              <p className="text-xs sm:text-sm font-medium truncate max-w-[120px]">{user?.name}</p>
               <p className="text-xs text-emerald-400">● Admin</p>
             </div>
           </div>
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-6 py-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
         {/* Tabs */}
-        <div className="flex gap-2 mb-8 bg-white/5 p-1.5 rounded-2xl w-fit">
+        <div className="flex gap-1 sm:gap-2 mb-6 sm:mb-8 bg-white/5 p-1.5 rounded-2xl w-full sm:w-fit overflow-x-auto no-scrollbar">
           {tabs.map(tab => (
             <button
               key={tab.id}
               onClick={() => { setActiveTab(tab.id); setSearch(''); }}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                activeTab === tab.id 
-                  ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg' 
+              className={`flex items-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-all whitespace-nowrap ${
+                activeTab === tab.id
+                  ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg'
                   : 'text-slate-400 hover:text-white hover:bg-white/5'
               }`}
             >
@@ -161,9 +165,9 @@ const AdminDashboard = () => {
               />
             </div>
             {activeTab === 'users' && (
-              <button 
+              <button
                 onClick={() => setIsAddUserModalOpen(true)}
-                className="flex items-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-medium transition shadow-lg shadow-indigo-600/20 group"
+                className="flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-medium transition shadow-lg shadow-indigo-600/20 group text-sm sm:text-base"
               >
                 <UserPlus className="w-5 h-5 transition-transform group-hover:scale-110" />
                 Add New User
@@ -188,33 +192,33 @@ const AdminDashboard = () => {
             {activeTab === 'overview' && stats && (
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
                 {/* Stats Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                  <div className="bg-gradient-to-br from-blue-600/20 to-blue-800/10 border border-blue-500/20 rounded-2xl p-6">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
+                  <div className="bg-gradient-to-br from-blue-600/20 to-blue-800/10 border border-blue-500/20 rounded-2xl p-5 sm:p-6">
                     <div className="flex items-center gap-3 mb-3">
                       <div className="bg-blue-500/20 p-2 rounded-lg"><Users className="w-5 h-5 text-blue-400" /></div>
                       <span className="text-slate-400 text-sm">Total Users</span>
                     </div>
-                    <p className="text-4xl font-bold">{stats.totalUsers}</p>
+                    <p className="text-3xl sm:text-4xl font-bold">{stats.totalUsers}</p>
                   </div>
-                  <div className="bg-gradient-to-br from-purple-600/20 to-purple-800/10 border border-purple-500/20 rounded-2xl p-6">
+                  <div className="bg-gradient-to-br from-purple-600/20 to-purple-800/10 border border-purple-500/20 rounded-2xl p-5 sm:p-6">
                     <div className="flex items-center gap-3 mb-3">
                       <div className="bg-purple-500/20 p-2 rounded-lg"><FileText className="w-5 h-5 text-purple-400" /></div>
                       <span className="text-slate-400 text-sm">Total Documents</span>
                     </div>
-                    <p className="text-4xl font-bold">{stats.totalDocs}</p>
+                    <p className="text-3xl sm:text-4xl font-bold">{stats.totalDocs}</p>
                   </div>
-                  <div className="bg-gradient-to-br from-emerald-600/20 to-emerald-800/10 border border-emerald-500/20 rounded-2xl p-6">
+                  <div className="bg-gradient-to-br from-emerald-600/20 to-emerald-800/10 border border-emerald-500/20 rounded-2xl p-5 sm:p-6">
                     <div className="flex items-center gap-3 mb-3">
                       <div className="bg-emerald-500/20 p-2 rounded-lg"><HardDrive className="w-5 h-5 text-emerald-400" /></div>
                       <span className="text-slate-400 text-sm">Storage Used</span>
                     </div>
-                    <p className="text-4xl font-bold">{formatBytes(stats.totalStorage)}</p>
+                    <p className="text-3xl sm:text-4xl font-bold break-all">{formatBytes(stats.totalStorage)}</p>
                   </div>
                 </div>
 
                 {/* Recent Activity */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                  <div className="bg-white/5 border border-white/10 rounded-2xl p-4 sm:p-6">
                     <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
                       <Users className="w-5 h-5 text-indigo-400" /> Recent Users
                     </h3>
@@ -239,7 +243,7 @@ const AdminDashboard = () => {
                     </div>
                   </div>
 
-                  <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+                  <div className="bg-white/5 border border-white/10 rounded-2xl p-4 sm:p-6">
                     <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
                       <FileText className="w-5 h-5 text-purple-400" /> Recent Documents
                     </h3>
@@ -266,7 +270,8 @@ const AdminDashboard = () => {
             {activeTab === 'users' && (
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
                 <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
-                  <table className="w-full">
+                  <div className="overflow-x-auto">
+                  <table className="w-full min-w-[720px]">
                     <thead>
                       <tr className="border-b border-white/10 text-slate-400 text-sm">
                         <th className="text-left p-4">User</th>
@@ -322,6 +327,7 @@ const AdminDashboard = () => {
                       ))}
                     </tbody>
                   </table>
+                  </div>
                   {filteredUsers.length === 0 && (
                     <div className="text-center py-12 text-slate-500">No users found</div>
                   )}
@@ -351,23 +357,23 @@ const AdminDashboard = () => {
             {/* Sharing Modal */}
             <AnimatePresence>
               {sharingModal.isOpen && (
-                <motion.div 
+                <motion.div
                   initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                  className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+                  className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
                 >
-                  <motion.div 
+                  <motion.div
                     initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
-                    className="bg-slate-900 border border-white/10 rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl"
+                    className="bg-slate-900 border border-white/10 rounded-t-3xl sm:rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl max-h-[95vh] flex flex-col"
                   >
-                    <div className="p-6 border-b border-white/10 flex justify-between items-center bg-indigo-600/10">
-                      <div>
-                        <h3 className="text-xl font-bold text-white">Select File to Share</h3>
-                        <p className="text-sm text-indigo-300 italic">Picking a document to share with <b>{sharingModal.user?.name}</b></p>
+                    <div className="p-4 sm:p-6 border-b border-white/10 flex justify-between items-center gap-3 bg-indigo-600/10 shrink-0">
+                      <div className="min-w-0">
+                        <h3 className="text-base sm:text-xl font-bold text-white">Select File to Share</h3>
+                        <p className="text-xs sm:text-sm text-indigo-300 italic truncate">Sharing with <b>{sharingModal.user?.name}</b></p>
                       </div>
-                      <button onClick={() => setSharingModal({ isOpen: false, user: null })} className="p-2 hover:bg-white/10 rounded-full transition"><X className="w-6 h-6 text-white" /></button>
+                      <button onClick={() => setSharingModal({ isOpen: false, user: null })} className="p-2 hover:bg-white/10 rounded-full transition shrink-0"><X className="w-5 h-5 sm:w-6 sm:h-6 text-white" /></button>
                     </div>
                     
-                    <div className="p-4">
+                    <div className="p-4 overflow-y-auto">
                       <div className="relative mb-4">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                         <input 
@@ -466,24 +472,24 @@ const DocumentPermissionCard = ({ doc, onUpdate, formatBytes, users }) => {
 
   return (
     <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
-      <div 
-        className="flex items-center justify-between p-4 cursor-pointer hover:bg-white/5 transition"
+      <div
+        className="flex items-center justify-between gap-3 p-3 sm:p-4 cursor-pointer hover:bg-white/5 transition"
         onClick={() => setExpanded(!expanded)}
       >
-        <div className="flex items-center gap-4">
-          <div className="bg-indigo-500/20 p-2.5 rounded-xl">
+        <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
+          <div className="bg-indigo-500/20 p-2 sm:p-2.5 rounded-xl shrink-0">
             <FileText className="w-5 h-5 text-indigo-400" />
           </div>
-          <div>
-            <p className="font-medium">{doc.title}</p>
-            <p className="text-xs text-slate-400">
-              by {doc.uploadedBy?.name} • {formatBytes(doc.fileSize)} • {doc.fileType}
+          <div className="min-w-0">
+            <p className="font-medium text-sm sm:text-base truncate">{doc.title}</p>
+            <p className="text-xs text-slate-400 truncate">
+              by {doc.uploadedBy?.name} • {formatBytes(doc.fileSize)}
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <span className={`text-xs px-3 py-1 rounded-full ${
-            access === 'public' ? 'bg-green-500/20 text-green-400' : 
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          <span className={`text-xs px-2 sm:px-3 py-1 rounded-full hidden sm:inline ${
+            access === 'public' ? 'bg-green-500/20 text-green-400' :
             access === 'restricted' ? 'bg-orange-500/20 text-orange-400' : 'bg-slate-500/20 text-slate-400'
           }`}>{access}</span>
           <ChevronDown className={`w-5 h-5 text-slate-400 transition-transform ${expanded ? 'rotate-180' : ''}`} />
@@ -498,16 +504,16 @@ const DocumentPermissionCard = ({ doc, onUpdate, formatBytes, users }) => {
             exit={{ height: 0, opacity: 0 }}
             className="border-t border-white/10"
           >
-            <div className="p-5 space-y-5">
+            <div className="p-4 sm:p-5 space-y-5">
               {/* Access Level */}
               <div>
                 <label className="text-sm text-slate-400 mb-2 block">Access Level</label>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   {['private', 'restricted', 'public'].map(level => (
                     <button
                       key={level}
                       onClick={() => changeAccess(level)}
-                      className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                      className={`px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-medium transition-all ${
                         access === level 
                           ? level === 'public' ? 'bg-green-600 text-white' :
                             level === 'restricted' ? 'bg-orange-600 text-white' : 'bg-slate-600 text-white'
@@ -557,19 +563,21 @@ const DocumentPermissionCard = ({ doc, onUpdate, formatBytes, users }) => {
                   <span>Manage Access</span>
                   <span className="text-xs">{sharedUsers.length} users have access</span>
                 </label>
-                
+                <p className="text-xs text-slate-500 italic mb-3">Permissions above apply to every user in this list.</p>
+
                 {/* List of Shared Users */}
                 <div className="flex flex-wrap gap-2 mb-4">
-                  {sharedUsers.length > 0 ? sharedUsers.map(uId => {
-                    const u = users.find(user => user._id === uId);
+                  {sharedUsers.length > 0 ? sharedUsers.map(entry => {
+                    const id = typeof entry === 'object' ? entry._id : entry;
+                    const u = typeof entry === 'object' ? entry : users.find(x => x._id === entry);
                     return (
-                      <div key={uId} className="flex items-center gap-2 bg-indigo-500/10 border border-indigo-500/20 px-3 py-1.5 rounded-full text-sm group">
-                        <span className="text-indigo-300">{u?.name || 'Loading...'}</span>
-                        <button 
+                      <div key={id} className="flex items-center gap-2 bg-indigo-500/10 border border-indigo-500/20 px-3 py-1.5 rounded-full text-sm group">
+                        <span className="text-indigo-300">{u?.name || u?.email || 'Unknown'}</span>
+                        <button
                           onClick={async () => {
                             try {
-                              await axios.post(`${API_BASE}/documents/${doc._id}/unshare`, { userId: uId });
-                              setSharedUsers(prev => prev.filter(id => id !== uId));
+                              const res = await axios.post(`${API_BASE}/documents/${doc._id}/unshare`, { userId: id });
+                              setSharedUsers(res.data?.document?.sharedWith || []);
                             } catch (err) { console.error(err); }
                           }}
                           className="hover:text-red-400 text-indigo-500 transition"
@@ -588,9 +596,9 @@ const DocumentPermissionCard = ({ doc, onUpdate, formatBytes, users }) => {
                   <div className="flex gap-2">
                     <div className="relative flex-1">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                      <input 
-                        type="text" 
-                        placeholder="Search user name or email..." 
+                      <input
+                        type="text"
+                        placeholder="Search user name or email..."
                         value={shareSearch}
                         onChange={(e) => {
                           setShareSearch(e.target.value);
@@ -602,21 +610,23 @@ const DocumentPermissionCard = ({ doc, onUpdate, formatBytes, users }) => {
                     </div>
                   </div>
 
-                  {showUserList && shareSearch.length > 0 && (
-                    <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-white/10 rounded-xl shadow-2xl z-50 max-h-48 overflow-y-auto py-2">
-                      {users
-                        .filter(u => 
-                          (u.email.toLowerCase().includes(shareSearch.toLowerCase()) || 
-                           u.name.toLowerCase().includes(shareSearch.toLowerCase())) && 
-                          !sharedUsers.includes(u._id)
-                        )
-                        .map(u => (
-                          <button 
+                  {showUserList && shareSearch.length > 0 && (() => {
+                    const sharedIds = new Set(sharedUsers.map(e => String(typeof e === 'object' ? e._id : e)));
+                    const matches = users.filter(u =>
+                      (u.email?.toLowerCase().includes(shareSearch.toLowerCase()) ||
+                       u.name?.toLowerCase().includes(shareSearch.toLowerCase())) &&
+                      !sharedIds.has(String(u._id)) &&
+                      String(u._id) !== String(doc.uploadedBy?._id || doc.uploadedBy)
+                    );
+                    return (
+                      <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-white/10 rounded-xl shadow-2xl z-50 max-h-48 overflow-y-auto py-2">
+                        {matches.map(u => (
+                          <button
                             key={u._id}
                             onClick={async () => {
                               try {
-                                await axios.post(`${API_BASE}/documents/${doc._id}/share`, { email: u.email });
-                                setSharedUsers(prev => [...prev, u._id]);
+                                const res = await axios.post(`${API_BASE}/documents/${doc._id}/share`, { email: u.email });
+                                setSharedUsers(res.data?.document?.sharedWith || []);
                                 setShareSearch('');
                                 setShowUserList(false);
                               } catch (err) { console.error(err); }
@@ -630,15 +640,12 @@ const DocumentPermissionCard = ({ doc, onUpdate, formatBytes, users }) => {
                             <span className="text-xs text-indigo-400">Invite</span>
                           </button>
                         ))}
-                      {users.filter(u => 
-                        (u.email.toLowerCase().includes(shareSearch.toLowerCase()) || 
-                         u.name.toLowerCase().includes(shareSearch.toLowerCase())) && 
-                        !sharedUsers.includes(u._id)
-                      ).length === 0 && (
-                        <p className="px-4 py-2 text-xs text-slate-500">No matching users found</p>
-                      )}
-                    </div>
-                  )}
+                        {matches.length === 0 && (
+                          <p className="px-4 py-2 text-xs text-slate-500">No matching users found</p>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
             </div>

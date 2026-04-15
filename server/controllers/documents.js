@@ -3,6 +3,7 @@ const User = require('../models/User');
 const fs = require('fs');
 const path = require('path');
 const { uploadToSFTP, downloadFromSFTP } = require('../utils/sftp');
+const { checkAccess, requireOwnerOrAdmin, eqId } = require('../utils/permissions');
 
 const uploadDocument = async (req, res) => {
     try {
@@ -58,6 +59,7 @@ const uploadDocument = async (req, res) => {
 };
 
 const downloadDocument = async (req, res) => {
+    try {
         const { versionNumber } = req.params;
         let document = await Document.findById(req.params.id);
         if (!document) return res.status(404).json({ message: 'Document not found' });
@@ -72,32 +74,14 @@ const downloadDocument = async (req, res) => {
         if (versionNumber) {
             const version = document.versions.find(v => v.versionNumber.toString() === versionNumber.toString());
             if (!version) return res.status(404).json({ message: 'Version not found' });
-            
-            // Note: In this system, 'versions' array contains ARCHIVED versions. 
-            // The main document fields (fileData, storagePath) hold the CURRENT version.
-            // If the requested version is the latest, it might be the main one or in the array.
-                                    
+
             if (version.fileData) fileDataToRes = version.fileData;
             if (version.storagePath) storagePathToRes = version.storagePath;
-            // Assuming name/type stay similar or we could store them in version too
         }
 
-        // Authorization Check
-        const isOwner = document.uploadedBy.toString() === req.user.id;
-        const isAdmin = req.user.role === 'Admin';
-        const isShared = document.sharedWith?.includes(req.user.id);
-        const isPublic = document.accessLevel === 'public';
+        const access = checkAccess(document, req.user, 'download');
+        if (!access.allowed) return res.status(access.status).json({ message: access.reason });
 
-        if (!isOwner && !isAdmin && !isShared && !isPublic) {
-            return res.status(401).json({ message: 'Not authorized to access this document' });
-        }
-        
-        // Permission Check: Owner, Admin, and Editors bypass read/download restrictions
-        const canEdit = document.permissions?.canEdit === true || req.user.role === 'Editor';
-        if (!isOwner && !isAdmin && !canEdit && document.permissions?.canDownload === false) {
-            return res.status(403).json({ message: 'Download access is restricted for this document' });
-        }
-        
         res.set({
             'Content-Type': fileTypeToRes,
             'Content-Disposition': `attachment; filename="${fileNameToRes || 'download'}"`,
@@ -164,7 +148,8 @@ const getDocuments = async (req, res) => {
         // Exclude fileData from query results (it's large)
         let findQuery = Document.find(query)
             .select('-fileData')
-            .populate('uploadedBy', 'name email');
+            .populate('uploadedBy', 'name email')
+            .populate('sharedWith', 'name email');
         
         if (tab === 'Recent') {
             findQuery = findQuery.sort({ updatedAt: -1 }).limit(10);
@@ -185,10 +170,10 @@ const deleteDocument = async (req, res) => {
         if (!document) return res.status(404).json({ message: 'Document not found' });
         
         const isAdmin = req.user.role === 'Admin';
-        const isOwner = document.uploadedBy.toString() === req.user.id;
+        const isOwner = String(document.uploadedBy) === String(req.user.id);
 
         if (!isOwner && !isAdmin) {
-            return res.status(401).json({ message: 'Not authorized. Only owners or admins can delete documents.' });
+            return res.status(403).json({ message: 'Not authorized. Only owners or admins can delete documents.' });
         }
         
         if (req.user.role === 'Viewer') {
@@ -212,7 +197,10 @@ const toggleStar = async (req, res) => {
     try {
         const document = await Document.findById(req.params.id);
         if (!document) return res.status(404).json({ message: 'Document not found' });
-        
+
+        const guard = requireOwnerOrAdmin(document, req.user);
+        if (!guard.allowed) return res.status(guard.status).json({ message: guard.reason });
+
         document.isStarred = !document.isStarred;
         await document.save();
         res.json(document);
@@ -227,19 +215,30 @@ const shareDocument = async (req, res) => {
         const { email } = req.body;
         if (!email) return res.status(400).json({ message: 'Email is required' });
 
-        const targetUser = await User.findOne({ email });
-        if (!targetUser) return res.status(404).json({ message: 'User not found with this email' });
-
         const document = await Document.findById(req.params.id);
         if (!document) return res.status(404).json({ message: 'Document not found' });
 
-        // Add to sharedWith if not already there
+        const guard = requireOwnerOrAdmin(document, req.user);
+        if (!guard.allowed) return res.status(guard.status).json({ message: guard.reason });
+
+        const targetUser = await User.findOne({ email });
+        if (!targetUser) return res.status(404).json({ message: 'User not found with this email' });
+
+        // Don't share with the owner — they already have full access.
+        if (eqId(targetUser._id, document.uploadedBy)) {
+            return res.status(400).json({ message: 'Owner already has access' });
+        }
+
         if (!document.sharedWith) document.sharedWith = [];
-        if (!document.sharedWith.includes(targetUser._id)) {
+        const already = document.sharedWith.some(u => eqId(u, targetUser._id));
+        if (!already) {
             document.sharedWith.push(targetUser._id);
             await document.save();
         }
-        res.json({ message: `Document shared with ${targetUser.name}` });
+        const populated = await Document.findById(document._id)
+            .select('-fileData')
+            .populate('sharedWith', 'name email');
+        res.json({ message: `Document shared with ${targetUser.name}`, document: populated });
     } catch (err) {
         res.status(500).json({ message: err.message });
     }
@@ -249,12 +248,21 @@ const shareDocument = async (req, res) => {
 const unshareDocument = async (req, res) => {
     try {
         const { userId } = req.body;
+        if (!userId) return res.status(400).json({ message: 'userId is required' });
+
         const document = await Document.findById(req.params.id);
         if (!document) return res.status(404).json({ message: 'Document not found' });
 
-        document.sharedWith = document.sharedWith.filter(id => id.toString() !== userId);
+        const guard = requireOwnerOrAdmin(document, req.user);
+        if (!guard.allowed) return res.status(guard.status).json({ message: guard.reason });
+
+        document.sharedWith = (document.sharedWith || []).filter(id => !eqId(id, userId));
         await document.save();
-        res.json({ message: 'Access removed' });
+
+        const populated = await Document.findById(document._id)
+            .select('-fileData')
+            .populate('sharedWith', 'name email');
+        res.json({ message: 'Access removed', document: populated });
     } catch (err) {
         res.status(500).json({ message: err.message });
     }
@@ -263,31 +271,11 @@ const unshareDocument = async (req, res) => {
 const viewDocument = async (req, res) => {
     try {
         const document = await Document.findById(req.params.id);
-        if (!document || !document.fileData) {
-            return res.status(404).json({ message: 'File not found' });
-        }
-        
-        // Permission Check: Owner and Admin bypass restrictions
-        // Authorization Check
-        const isOwner = document.uploadedBy.toString() === req.user.id;
-        const isAdmin = req.user.role === 'Admin';
-        const isShared = document.sharedWith?.includes(req.user.id);
-        const isPublic = document.accessLevel === 'public';
+        if (!document) return res.status(404).json({ message: 'Document not found' });
 
-        if (!isOwner && !isAdmin && !isShared && !isPublic) {
-            return res.status(401).json({ message: 'Not authorized to access this document' });
-        }
-        
-        // Permission Check: Owner, Admin, and Editors bypass read restrictions
-        const canEdit = document.permissions?.canEdit === true;
-        if (!isOwner && !isAdmin && !canEdit && document.permissions?.canView === false) {
-            return res.status(403).json({ message: 'View access is restricted for this document' });
-        }
-        
-        // Authorization check if needed? The 'auth' middleware is applied, so req.user exists. 
-        // For private documents, we might want to check if they have permissions.
-        // But for now, if they can see it in their Dashboard, they can issue the request. 
-        
+        const access = checkAccess(document, req.user, 'view');
+        if (!access.allowed) return res.status(access.status).json({ message: access.reason });
+
         res.set({
             'Content-Type': document.fileType,
             'Content-Disposition': `inline; filename="${document.fileName || 'view'}"`,
@@ -321,19 +309,8 @@ const updateDocumentMetadata = async (req, res) => {
         const document = await Document.findById(req.params.id);
         if (!document) return res.status(404).json({ message: 'Document not found' });
 
-        const isOwner = document.uploadedBy.toString() === req.user.id;
-        const isAdmin = req.user.role === 'Admin';
-        const isEditor = req.user.role === 'Editor';
-        const isShared = document.sharedWith?.includes(req.user.id);
-        
-        // Admins and Owners can always edit. 
-        // Editors can edit if it's their doc OR if it's shared with them and document level permission doesn't explicitly block them 
-        // (but usually Editor role should imply editing if they have access).
-        const canEdit = isOwner || isAdmin || (isEditor && isShared) || document.permissions?.canEdit;
-
-        if (!canEdit) {
-            return res.status(403).json({ message: 'No permission to edit metadata' });
-        }
+        const access = checkAccess(document, req.user, 'edit');
+        if (!access.allowed) return res.status(access.status).json({ message: access.reason });
 
         if (title) document.title = title;
         if (tags) document.tags = tags;
@@ -357,16 +334,8 @@ const updateDocumentVersion = async (req, res) => {
         const document = await Document.findById(id);
         if (!document) return res.status(404).json({ message: 'Document not found' });
 
-        const isOwner = document.uploadedBy.toString() === req.user.id;
-        const isAdmin = req.user.role === 'Admin';
-        const isEditor = req.user.role === 'Editor';
-        const isShared = document.sharedWith?.includes(req.user.id);
-        
-        const canEdit = isOwner || isAdmin || (isEditor && isShared) || document.permissions?.canEdit;
-
-        if (!canEdit) {
-            return res.status(403).json({ message: 'No permission to edit content' });
-        }
+        const access = checkAccess(document, req.user, 'edit');
+        if (!access.allowed) return res.status(access.status).json({ message: access.reason });
 
         const currentVersionNumber = document.versions.length + 1;
         const archiveVersion = {
@@ -429,15 +398,63 @@ const updateDocumentVersion = async (req, res) => {
     }
 };
 
-module.exports = { 
-    uploadDocument, 
-    getDocuments, 
-    deleteDocument, 
-    toggleStar, 
-    shareDocument, 
-    downloadDocument, 
+// Owner (or admin) updates the per-document permission toggles.
+const ALLOWED_PERM_KEYS = ['canView', 'canDownload', 'canEdit', 'preventScreenshot', 'watermark'];
+const ALLOWED_ACCESS_LEVELS = ['public', 'private', 'restricted'];
+
+const updateDocumentPermissions = async (req, res) => {
+    try {
+        const document = await Document.findById(req.params.id);
+        if (!document) return res.status(404).json({ message: 'Document not found' });
+
+        const guard = requireOwnerOrAdmin(document, req.user);
+        if (!guard.allowed) return res.status(guard.status).json({ message: guard.reason });
+
+        const { permissions, accessLevel } = req.body;
+        const update = {};
+
+        if (permissions && typeof permissions === 'object') {
+            for (const key of ALLOWED_PERM_KEYS) {
+                if (key in permissions) update[`permissions.${key}`] = !!permissions[key];
+            }
+        }
+        if (accessLevel) {
+            if (!ALLOWED_ACCESS_LEVELS.includes(accessLevel)) {
+                return res.status(400).json({ message: `Invalid accessLevel. Allowed: ${ALLOWED_ACCESS_LEVELS.join(', ')}` });
+            }
+            update.accessLevel = accessLevel;
+        }
+
+        if (Object.keys(update).length === 0) {
+            return res.status(400).json({ message: 'No valid permissions or accessLevel provided' });
+        }
+
+        const updated = await Document.findByIdAndUpdate(
+            req.params.id,
+            { $set: update },
+            { new: true, runValidators: true }
+        )
+            .select('-fileData')
+            .populate('uploadedBy', 'name email')
+            .populate('sharedWith', 'name email');
+
+        res.json(updated);
+    } catch (err) {
+        console.error('Update Document Permissions Error:', err);
+        res.status(500).json({ message: err.message });
+    }
+};
+
+module.exports = {
+    uploadDocument,
+    getDocuments,
+    deleteDocument,
+    toggleStar,
+    shareDocument,
+    downloadDocument,
     viewDocument,
     unshareDocument,
     updateDocumentMetadata,
-    updateDocumentVersion
+    updateDocumentVersion,
+    updateDocumentPermissions
 };

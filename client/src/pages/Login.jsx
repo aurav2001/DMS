@@ -23,25 +23,25 @@ const Login = () => {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
-            <motion.div 
-                initial={{ opacity: 0, y: 20 }} 
+        <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4 py-8 sm:py-12">
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="max-w-md w-full"
             >
-                <div className="text-center mb-10">
-                    <Link to="/" className="inline-flex items-center gap-2 mb-6">
+                <div className="text-center mb-6 sm:mb-10">
+                    <Link to="/" className="inline-flex items-center gap-2 mb-4 sm:mb-6">
                         <div className="bg-primary-600 p-2 rounded-lg">
-                            <Shield className="text-white w-6 h-6" />
+                            <Shield className="text-white w-5 h-5 sm:w-6 sm:h-6" />
                         </div>
-                        <span className="text-2xl font-bold gradient-text">DocVault</span>
+                        <span className="text-xl sm:text-2xl font-bold gradient-text">DocVault</span>
                     </Link>
-                    <h2 className="text-3xl font-bold text-slate-900">Welcome Back</h2>
-                    <p className="text-slate-600 mt-2">Log in to access your secure vault</p>
+                    <h2 className="text-2xl sm:text-3xl font-bold text-slate-900">Welcome Back</h2>
+                    <p className="text-sm sm:text-base text-slate-600 mt-2">Log in to access your secure vault</p>
                 </div>
 
-                <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-100">
-                    <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="bg-white p-6 sm:p-8 rounded-2xl sm:rounded-3xl shadow-xl border border-slate-100">
+                    <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-6">
                         <div>
                             <label className="block text-sm font-medium text-slate-700 mb-2">Email Address</label>
                             <div className="relative">
@@ -77,8 +77,8 @@ const Login = () => {
                         </button>
                     </form>
 
-                    <div className="mt-8 pt-8 border-t text-center">
-                        <p className="text-slate-600">
+                    <div className="mt-6 sm:mt-8 pt-6 sm:pt-8 border-t text-center">
+                        <p className="text-sm sm:text-base text-slate-600">
                             Don't have an account? {' '}
                             <Link to="/register" className="text-primary-600 font-bold hover:underline">Create one free</Link>
                         </p>

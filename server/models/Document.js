@@ -18,7 +18,7 @@ const documentSchema = new mongoose.Schema({
     permissions: {
         canView: { type: Boolean, default: true },
         canDownload: { type: Boolean, default: true },
-        canEdit: { type: Boolean, default: false },
+        canEdit: { type: Boolean, default: true },
         preventScreenshot: { type: Boolean, default: false },
         watermark: { type: Boolean, default: false }
     },

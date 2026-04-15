@@ -1,15 +1,16 @@
 const express = require('express');
-const { 
-    uploadDocument, 
-    getDocuments, 
-    deleteDocument, 
+const {
+    uploadDocument,
+    getDocuments,
+    deleteDocument,
     toggleStar,
     shareDocument,
     downloadDocument,
     viewDocument,
     unshareDocument,
     updateDocumentMetadata,
-    updateDocumentVersion
+    updateDocumentVersion,
+    updateDocumentPermissions
 } = require('../controllers/documents');
 const auth = require('../middleware/auth');
 const upload = require('../middleware/multer');
@@ -23,6 +24,7 @@ router.delete('/:id', auth, deleteDocument);
 router.patch('/:id/star', auth, toggleStar);
 router.post('/:id/share', auth, shareDocument);
 router.post('/:id/unshare', auth, unshareDocument);
+router.patch('/:id/permissions', auth, updateDocumentPermissions);
 router.patch('/:id', auth, updateDocumentMetadata);
 router.get('/:id/version/:versionNumber', auth, downloadDocument);
 router.get('/:id/version:versionNumber', auth, downloadDocument); // Handle malformed URLs with colon

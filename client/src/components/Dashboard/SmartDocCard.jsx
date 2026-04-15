@@ -34,6 +34,7 @@ import PPTEditor from './PresentationEngine';
 const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
   const [showOptions, setShowOptions] = useState(false);
   const [viewState, setViewState] = useState({ isOpen: false, url: null });
+  const [isViewerOpen, setIsViewerOpen] = useState(false); // Read-only engine viewer
   const [isEditing, setIsEditing] = useState(false); // For Metadata Rename
   const [isEditorOpen, setIsEditorOpen] = useState(false); // For Full Document Editor
   const [editData, setEditData] = useState({ title: doc.title });
@@ -66,13 +67,19 @@ const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
 
   const formatDate = (date) => new Date(date).toLocaleDateString();
 
-  const uploaderId = typeof doc.uploadedBy === 'object' ? doc.uploadedBy?._id : doc.uploadedBy;
-  const isOwner = uploaderId === user?._id || uploaderId === user?.id;
+  const myId = String(user?._id || user?.id || '');
+  const uploaderId = String(typeof doc.uploadedBy === 'object' ? doc.uploadedBy?._id : doc.uploadedBy || '');
+  const isOwner = !!myId && uploaderId === myId;
   const isAdmin = user?.role === 'Admin';
-  
-  const canView = isOwner || isAdmin || doc.permissions?.canView !== false;
-  const canDownload = isOwner || isAdmin || doc.permissions?.canDownload !== false;
-  const canEdit = isOwner || isAdmin || doc.permissions?.canEdit === true;
+  const isShared = (doc.sharedWith || []).some(u => String(typeof u === 'object' ? u?._id : u) === myId);
+
+  const perms = doc.permissions || {};
+  // Admin always bypasses. Everyone else (owner/shared/public) respects toggles.
+  const isPublic = doc.accessLevel === 'public';
+  const hasAccess = isOwner || isAdmin || isShared || isPublic;
+  const canView = isAdmin || (hasAccess && perms.canView !== false);
+  const canDownload = isAdmin || (hasAccess && perms.canDownload !== false);
+  const canEdit = isAdmin || ((isOwner || isShared) && perms.canEdit !== false);
   
   // Robust Detection for Editor Support
   const t = (doc.fileType || '').toLowerCase();
@@ -100,6 +107,12 @@ const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
   };
 
   const handleSecureAction = async (action) => {
+    // For View action on Office formats, open the read-only engine (no auto-download)
+    if (action === 'view' && (isWord || isExcel || isPPT)) {
+      setIsViewerOpen(true);
+      return;
+    }
+
     try {
       const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
       const endpoint = action === 'view' ? 'view' : 'download';
@@ -109,7 +122,7 @@ const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
         headers: { 'x-auth-token': token }
       });
       const url = window.URL.createObjectURL(new Blob([response.data], { type: response.headers['content-type'] }));
-      
+
       if (action === 'download') {
         const link = document.createElement('a');
         link.href = url;
@@ -144,15 +157,15 @@ const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
 
   return (
     <>
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-        className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-100 dark:border-slate-800 hover:shadow-2xl transition-all group relative"
+        className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-100 dark:border-slate-800 hover:shadow-2xl transition-all group relative min-w-0"
       >
-        <div className="flex justify-between items-start mb-4">
-          <div className="bg-slate-50 dark:bg-slate-800 p-1 rounded-2xl group-hover:bg-indigo-50 dark:group-hover:bg-indigo-500/10 transition-colors">
+        <div className="flex justify-between items-start mb-3 sm:mb-4 gap-2">
+          <div className="bg-slate-50 dark:bg-slate-800 p-1 rounded-2xl group-hover:bg-indigo-50 dark:group-hover:bg-indigo-500/10 transition-colors shrink-0">
             {getIcon(doc.fileType, doc.fileName, doc.title)}
           </div>
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="hidden sm:flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             {canView && (
               <button onClick={() => handleSecureAction('view')} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500 hover:text-indigo-500 transition-all" title="View">
                 <Eye className="w-4 h-4" />
@@ -174,7 +187,7 @@ const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
               </button>
             )}
           </div>
-          <button onClick={() => setShowOptions(!showOptions)} className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors">
+          <button onClick={() => setShowOptions(!showOptions)} className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors shrink-0">
             <MoreVertical className="w-5 h-5" />
           </button>
         </div>
@@ -240,7 +253,7 @@ const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
 
           <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-50 dark:border-white/5">
             <span>
-              <span className="bg-yellow-400 text-blue-900 text-[10px] px-2 py-1 font-black rounded border-2 border-white animate-pulse uppercase tracking-widest">v5.5 - NUCLEAR BUST - ACTIVE</span> {(doc.fileSize / 1024 / 1024).toFixed(2)} MB
+              {(doc.fileSize / 1024 / 1024).toFixed(2)} MB
             </span>
             <span>{formatDate(doc.createdAt)}</span>
           </div>
@@ -278,7 +291,7 @@ const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
                 </button>
               )}
 
-              {user?.role !== 'Viewer' && (isOwner || doc.permissions?.canEdit || isAdmin) && (
+              {(isOwner || isAdmin) && (
                 <button 
                   onClick={() => { onShare(doc._id); setShowOptions(false); }}
                   className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
@@ -325,6 +338,25 @@ const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
         )}
       </AnimatePresence>
 
+      {/* Read-only Engine Viewer (Word/Excel/PPT) */}
+      <AnimatePresence>
+        {isViewerOpen && (
+          <React.Suspense fallback={
+            <div className="fixed inset-0 z-[200] bg-slate-900/50 flex items-center justify-center">
+              <Loader2 className="w-12 h-12 text-indigo-500 animate-spin" />
+            </div>
+          }>
+            {isExcel ? (
+              <ExcelEditor doc={doc} onClose={() => setIsViewerOpen(false)} onRefresh={onRefresh} viewOnly viewerEmail={user?.email} />
+            ) : isPPT ? (
+              <PPTEditor doc={doc} onClose={() => setIsViewerOpen(false)} onRefresh={onRefresh} viewOnly viewerEmail={user?.email} />
+            ) : (
+              <MSWordOnline doc={doc} onClose={() => setIsViewerOpen(false)} onRefresh={onRefresh} viewOnly viewerEmail={user?.email} />
+            )}
+          </React.Suspense>
+        )}
+      </AnimatePresence>
+
       {/* Secure Viewer Modal */}
       <AnimatePresence>
         {viewState.isOpen && (
@@ -333,17 +365,17 @@ const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
             className="fixed inset-0 z-[100] bg-slate-900/95 backdrop-blur-xl flex items-center justify-center p-4"
             onContextMenu={(e) => e.preventDefault()}
           >
-            <button 
-              onClick={() => setViewState({ isOpen: false, url: null })} 
-              className="absolute top-6 right-6 p-3 bg-white/10 hover:bg-red-500 text-white rounded-full transition-all z-[110] shadow-xl"
+            <button
+              onClick={() => setViewState({ isOpen: false, url: null })}
+              className="absolute top-3 right-3 sm:top-6 sm:right-6 p-2 sm:p-3 bg-white/10 hover:bg-red-500 text-white rounded-full transition-all z-[110] shadow-xl"
             >
-              <X className="w-6 h-6" />
+              <X className="w-5 h-5 sm:w-6 sm:h-6" />
             </button>
-            <div className="relative w-full max-w-6xl h-[90vh] bg-white rounded-3xl overflow-hidden shadow-2xl">
-              <iframe 
-                src={`${viewState.url}#toolbar=0`} 
-                className="w-full h-full border-0" 
-                title="Secure Viewer" 
+            <div className="relative w-full max-w-6xl h-[92vh] sm:h-[90vh] bg-white rounded-xl sm:rounded-3xl overflow-hidden shadow-2xl">
+              <iframe
+                src={`${viewState.url}#toolbar=0`}
+                className="w-full h-full border-0"
+                title="Secure Viewer"
               />
               <div className="absolute inset-0 z-10 pointer-events-none overflow-hidden flex flex-wrap content-around justify-center opacity-[0.03]">
                 {Array.from({length: 40}).map((_, i) => (

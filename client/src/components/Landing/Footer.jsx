@@ -21,9 +21,9 @@ const LinkedinIcon = ({ className }) => (
 
 const Footer = () => {
   return (
-    <footer className="bg-slate-900 text-slate-400 py-16">
+    <footer className="bg-slate-900 text-slate-400 py-12 sm:py-14 lg:py-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid md:grid-cols-4 gap-12 mb-12">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 sm:gap-10 lg:gap-12 mb-10 sm:mb-12">
           {/* Brand */}
           <div className="col-span-1">
             <div className="flex items-center gap-2 mb-6">
@@ -67,15 +67,15 @@ const Footer = () => {
             <h4 className="text-white font-bold mb-6 uppercase text-sm tracking-widest">Stay Updated</h4>
             <p className="text-sm mb-6">Get the latest updates and security news.</p>
             <div className="flex gap-2">
-              <input type="email" placeholder="Email address" className="bg-slate-800 border-none rounded-lg px-4 py-2 text-sm focus:ring-1 focus:ring-primary-500 w-full" />
-              <button className="bg-primary-600 text-white p-2 rounded-lg hover:bg-primary-700 transition-colors">
+              <input type="email" placeholder="Email address" className="bg-slate-800 border-none rounded-lg px-3 sm:px-4 py-2 text-sm focus:ring-1 focus:ring-primary-500 w-full min-w-0" />
+              <button className="bg-primary-600 text-white p-2 rounded-lg hover:bg-primary-700 transition-colors shrink-0">
                 <Mail className="w-5 h-5" />
               </button>
             </div>
           </div>
         </div>
-        
-        <div className="pt-12 border-t border-slate-800 text-center text-sm">
+
+        <div className="pt-8 sm:pt-10 lg:pt-12 border-t border-slate-800 text-center text-xs sm:text-sm">
           <p>© {new Date().getFullYear()} DocVault Inc. All rights reserved. Designed with ❤️ for professionals.</p>
         </div>
       </div>
