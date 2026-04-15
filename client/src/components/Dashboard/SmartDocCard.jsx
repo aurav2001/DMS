@@ -74,18 +74,30 @@ const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
   const canDownload = isOwner || isAdmin || doc.permissions?.canDownload !== false;
   const canEdit = isOwner || isAdmin || doc.permissions?.canEdit === true;
   
-  // Supported formats for full editor
   // Robust Detection for Editor Support
   const t = (doc.fileType || '').toLowerCase();
   const f = (doc.fileName || '').toLowerCase();
   const s = (doc.title || '').toLowerCase();
 
-  const isExcel = t.includes('spreadsheet') || t.includes('excel') || t.includes('csv') || f.endsWith('.xlsx') || f.endsWith('.xls') || f.endsWith('.csv') || s.endsWith('.xlsx') || s.endsWith('.xls') || s.endsWith('.csv');
-  const isPPT = t.includes('presentation') || t.includes('powerpoint') || f.endsWith('.pptx') || f.endsWith('.ppt') || s.endsWith('.pptx') || s.endsWith('.ppt');
-  const isWord = t.includes('word') || t.includes('officedocument.word') || f.endsWith('.docx') || f.endsWith('.doc') || s.endsWith('.docx') || s.endsWith('.doc');
-  const isPdf = t.includes('pdf') || f.endsWith('.pdf') || s.endsWith('.pdf');
+  // Helper for case-insensitive extension checking
+  const checkExt = (exts) => exts.some(ext => f.endsWith(ext) || s.endsWith(ext));
+
+  const isExcel = t.includes('spreadsheet') || t.includes('excel') || t.includes('csv') || checkExt(['.xlsx', '.xls', '.csv']);
+  const isPPT = t.includes('presentation') || t.includes('powerpoint') || checkExt(['.pptx', '.ppt']);
+  const isWord = t.includes('word') || t.includes('officedocument.word') || checkExt(['.docx', '.doc']);
+  const isPdf = t.includes('pdf') || checkExt(['.pdf']);
   
   const isEditorSupported = isPdf || isWord || isExcel || isPPT;
+
+  const handleOpenEditor = () => {
+    console.warn('DocVault Editor Trace:', { title: doc.title, fileType: t, fileName: f, isWord, isExcel, isPPT, isPdf });
+    if (isEditorSupported) {
+      setIsEditorOpen(true);
+    } else {
+      toast('Opening metadata editor (File format not specialized)', { icon: 'ℹ️' });
+      setIsEditing(true);
+    }
+  };
 
   const handleSecureAction = async (action) => {
     try {
@@ -119,7 +131,7 @@ const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
     try {
       setEditLoading(true);
       const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-      await axios.patch(`${API_BASE}/documents/${doc._id}/rename`, editData);
+      await axios.patch(`${API_BASE}/documents/${doc._id}`, editData);
       toast.success('Document updated');
       setIsEditing(false);
       if (onRefresh) onRefresh();
@@ -152,7 +164,7 @@ const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
               </button>
             )}
             {canEdit && isEditorSupported && (
-              <button onClick={() => setIsEditorOpen(true)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500 hover:text-indigo-600 transition-all shadow-sm" title="Advanced Editor">
+              <button onClick={handleOpenEditor} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500 hover:text-indigo-600 transition-all shadow-sm" title="Advanced Editor">
                 <FileEdit className="w-4 h-4" />
               </button>
             )}
@@ -218,7 +230,7 @@ const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
             )}
             {canEdit && (
               <button 
-                onClick={(e) => { e.stopPropagation(); isEditorSupported ? setIsEditorOpen(true) : setIsEditing(true); }}
+                onClick={(e) => { e.stopPropagation(); handleOpenEditor(); }}
                 className="cursor-pointer hover:bg-amber-100 hover:scale-105 transition-all text-[9px] px-2 py-0.5 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 rounded-md font-bold flex items-center gap-1 border border-amber-100 dark:border-amber-800/50"
               >
                 {isEditorSupported ? <FileEdit className="w-2.5 h-2.5" /> : <Edit3 className="w-2.5 h-2.5" />} EDIT
@@ -250,7 +262,7 @@ const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
               
               {canEdit && isEditorSupported && (
                 <button 
-                  onClick={() => { setIsEditorOpen(true); setShowOptions(false); }}
+                  onClick={() => { handleOpenEditor(); setShowOptions(false); }}
                   className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors font-bold"
                 >
                   <FileEdit className="w-4 h-4" /> Open Editor
