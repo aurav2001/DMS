@@ -64,8 +64,10 @@ const DocumentCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
     try {
       const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
       const endpoint = action === 'view' ? 'view' : 'download';
+      const token = localStorage.getItem('token');
       const response = await axios.get(`${API_BASE}/documents/${endpoint}/${doc._id}`, {
-        responseType: 'blob'
+        responseType: 'blob',
+        headers: { 'x-auth-token': token }
       });
       const url = window.URL.createObjectURL(new Blob([response.data], { type: response.headers['content-type'] }));
       

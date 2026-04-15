@@ -48,8 +48,10 @@ const DocumentEditor = ({ doc, onClose, onRefresh }) => {
         try {
             setLoading(true);
             const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+            const token = localStorage.getItem('token');
             const res = await axios.get(`${API_BASE}/documents/download/${doc._id}`, {
-                responseType: 'arraybuffer'
+                responseType: 'arraybuffer',
+                headers: { 'x-auth-token': token }
             });
 
             if (doc.fileType.includes('pdf')) {
@@ -93,16 +95,25 @@ const DocumentEditor = ({ doc, onClose, onRefresh }) => {
             
             if (mode === 'word') {
                 const htmlContent = editorRef.current?.innerHTML || '';
+                const token = localStorage.getItem('token');
                 await axios.post(`${API_BASE}/documents/${doc._id}/version`, {
                     htmlContent,
                     type: 'docx'
+                }, {
+                    headers: { 'x-auth-token': token }
                 });
             } else if (mode === 'pdf') {
                 const pdfBytes = await pdfInstance.save();
+                const token = localStorage.getItem('token');
                 const formData = new FormData();
                 formData.append('file', new Blob([pdfBytes], { type: 'application/pdf' }), doc.fileName);
                 formData.append('type', 'pdf');
-                await axios.post(`${API_BASE}/documents/${doc._id}/version`, formData);
+                await axios.post(`${API_BASE}/documents/${doc._id}/version`, formData, {
+                    headers: { 
+                        'x-auth-token': token,
+                        'Content-Type': 'multipart/form-data'
+                    }
+                });
             }
 
             toast.success('Document saved successfully!');
