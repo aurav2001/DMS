@@ -1,8 +1,8 @@
 const express = require('express');
-const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const path = require('path');
+const connectDB = require('./db');
 
 dotenv.config();
 
@@ -10,7 +10,7 @@ const app = express();
 
 // Middleware
 app.use(cors({
-    origin: '*', 
+    origin: '*',
     methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'x-auth-token', 'Authorization'],
     credentials: true
@@ -18,9 +18,21 @@ app.use(cors({
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+// Ensure MongoDB is connected before handling any /api request.
+// In serverless (Vercel), this awaits the cached connection promise so
+// queries don't run on a buffering connection.
+app.use('/api', async (req, res, next) => {
+    try {
+        await connectDB();
+        next();
+    } catch (err) {
+        console.error('DB connect middleware failed:', err.message);
+        res.status(503).json({ message: 'Database unavailable, please retry' });
+    }
+});
+
 // Root Route for status check
 app.get('/', (req, res) => {
-    console.log('Root route accessed');
     res.json({ message: 'DocVault API is running', status: 'OK' });
 });
 
@@ -35,21 +47,10 @@ app.use('/api/documents', documentRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/public', publicRoutes);
 
-// DB Connection
-console.log('Attempting to connect to MongoDB...');
-if (!process.env.MONGO_URI) {
-    console.error('CRITICAL: MONGO_URI is not defined in environment variables');
-}
-
-mongoose.connect(process.env.MONGO_URI)
-    .then(() => console.log('MongoDB Connected Successfully'))
-    .catch(err => {
-        console.error('CRITICAL: MongoDB connection error details:');
-        console.error(err);
-    });
-
 const PORT = process.env.PORT || 5000;
 if (process.env.NODE_ENV !== 'production') {
+    // Local dev: open the connection eagerly and start listening.
+    connectDB().catch((err) => console.error('Initial DB connect failed:', err.message));
     app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 }
 
