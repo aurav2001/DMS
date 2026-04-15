@@ -25,7 +25,7 @@ import { useAuth } from '../../context/AuthContext';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 
-const DocumentEditor = React.lazy(() => import('./DocumentEditor'));
+import DocumentEditor from './DocumentEditor';
 
 const DocumentCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
   const [showOptions, setShowOptions] = useState(false);
