@@ -32,7 +32,7 @@ const Hero = () => {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-primary-600"></span>
               </span>
-              Trusted by 10,000+ teams worldwide
+              v5.5 - NUCLEAR DEPLOYMENT TEST - ACTIVE
             </div>
             
             <h1 className="text-5xl lg:text-7xl font-extrabold text-slate-900 leading-tight mb-8">
