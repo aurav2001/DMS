@@ -9,21 +9,6 @@ export default defineConfig({
     tailwindcss(),
   ],
   build: {
-    rollupOptions: {
-      output: {
-        entryFileNames: `assets/[name]-[hash]-${Date.now()}.js`,
-        chunkFileNames: `assets/[name]-[hash]-${Date.now()}.js`,
-        assetFileNames: `assets/[name]-[hash]-${Date.now()}.[ext]`,
-        manualChunks(id) {
-          if (id.includes('@ckeditor') || id.includes('mammoth')) {
-            return 'editor-vendor';
-          }
-          if (id.includes('pdf-lib')) {
-            return 'pdf-vendor';
-          }
-        }
-      }
-    },
-    chunkSizeWarningLimit: 1000,
+    chunkSizeWarningLimit: 2000,
   }
 })
