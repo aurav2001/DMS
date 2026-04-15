@@ -10,7 +10,9 @@ const app = express();
 
 // Middleware
 app.use(cors({
-    origin: ['https://dms-frontend-sandy.vercel.app', 'http://localhost:5173'],
+    origin: '*', 
+    methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'x-auth-token', 'Authorization'],
     credentials: true
 }));
 app.use(express.json());

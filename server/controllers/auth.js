@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 
 const register = async (req, res) => {
+    return res.status(403).json({ message: 'Self-registration is disabled. Please contact the administrator to create an account.' });
     try {
         const { name, email, password } = req.body;
         
@@ -48,4 +49,13 @@ const getMe = async (req, res) => {
     }
 };
 
-module.exports = { register, login, getMe };
+const getUsersList = async (req, res) => {
+    try {
+        const users = await User.find().select('name email');
+        res.json(users);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};
+
+module.exports = { register, login, getMe, getUsersList };

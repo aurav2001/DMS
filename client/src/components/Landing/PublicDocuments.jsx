@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Search, Download, FileText, Database } from 'lucide-react';
+import { Search, Eye, FileText, Database, EyeOff, X, FileImage, FileVideo, FileAudio, Archive, File } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useAuth } from '../../context/AuthContext';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -9,6 +11,18 @@ const PublicDocuments = () => {
   const [stats, setStats] = useState({ totalDocuments: 0, totalIssuers: 0, totalDepartments: 0 });
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
+  const [viewState, setViewState] = useState({ isOpen: false, url: null, doc: null });
+  const { user } = useAuth();
+
+  const getDocIcon = (type) => {
+    const t = type?.toLowerCase() || '';
+    if (t.includes('image')) return <FileImage className="w-5 h-5 text-orange-500 mt-0.5 shrink-0" />;
+    if (t.includes('pdf')) return <FileText className="w-5 h-5 text-red-500 mt-0.5 shrink-0" />;
+    if (t.includes('video')) return <FileVideo className="w-5 h-5 text-purple-500 mt-0.5 shrink-0" />;
+    if (t.includes('audio')) return <FileAudio className="w-5 h-5 text-green-500 mt-0.5 shrink-0" />;
+    if (t.includes('zip') || t.includes('compressed')) return <Archive className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />;
+    return <File className="w-5 h-5 text-slate-400 mt-0.5 shrink-0" />;
+  };
 
   const fetchPublicData = async () => {
     setLoading(true);
@@ -28,12 +42,34 @@ const PublicDocuments = () => {
   useEffect(() => {
     const delayDebounceFn = setTimeout(() => {
       fetchPublicData();
-    }, 500); // 500ms debounce for search
+    }, 500);
     return () => clearTimeout(delayDebounceFn);
   }, [searchQuery]);
 
-  const handleDownload = (docId) => {
-    window.open(`${API_BASE}/documents/download/${docId}`);
+  const handleViewSecure = async (doc) => {
+    try {
+      const response = await axios.get(`${API_BASE}/public/view/${doc._id}`, {
+        responseType: 'arraybuffer'
+      });
+      
+      const isWord = doc.fileType.includes('word') || doc.fileType.includes('officedocument');
+      let url = null;
+      let htmlContent = null;
+
+      if (isWord) {
+        const mammoth = await import('mammoth');
+        const result = await mammoth.convertToHtml({ arrayBuffer: response.data });
+        htmlContent = result.value;
+      } else {
+        const blob = new Blob([response.data], { type: response.headers['content-type'] || 'application/pdf' });
+        url = window.URL.createObjectURL(blob);
+      }
+      
+      setViewState({ isOpen: true, url, htmlContent, doc, isWord });
+    } catch (err) {
+      console.error(err);
+      alert('Failed to load document preview.');
+    }
   };
 
   return (
@@ -71,19 +107,14 @@ const PublicDocuments = () => {
 
         {/* Statistics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-          {/* Card 1: Departments/Tags */}
           <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-6 text-center shadow-sm">
             <h3 className="text-4xl font-bold text-blue-900 mb-2">{stats.totalDepartments}</h3>
             <p className="text-blue-800 font-semibold text-sm uppercase tracking-wider">Total Categories</p>
           </div>
-          
-          {/* Card 2: Issuers/Users */}
           <div className="bg-red-50/50 border border-red-100 rounded-xl p-6 text-center shadow-sm">
             <h3 className="text-4xl font-bold text-red-900 mb-2">{stats.totalIssuers}</h3>
             <p className="text-red-800 font-semibold text-sm uppercase tracking-wider">Total Issuers</p>
           </div>
-          
-          {/* Card 3: Documents */}
           <div className="bg-emerald-50/50 border border-emerald-100 rounded-xl p-6 text-center shadow-sm">
             <h3 className="text-4xl font-bold text-emerald-900 mb-2">{stats.totalDocuments}</h3>
             <p className="text-emerald-800 font-semibold text-sm uppercase tracking-wider">Total Documents</p>
@@ -129,7 +160,7 @@ const PublicDocuments = () => {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-start gap-3">
-                        <FileText className="w-5 h-5 text-indigo-500 mt-0.5 shrink-0" />
+                        {getDocIcon(doc.fileType)}
                         <div>
                           <p className="font-medium text-slate-900">{doc.title}</p>
                           <p className="text-xs text-slate-500 mt-1 line-clamp-2">
@@ -139,13 +170,23 @@ const PublicDocuments = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-center">
-                      <button 
-                        onClick={() => handleDownload(doc._id)}
-                        className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors inline-block"
-                        title="Download PDF"
-                      >
-                        <Download className="w-5 h-5" />
-                      </button>
+                      {(doc.permissions?.canView !== false) ? (
+                        <button 
+                          onClick={() => handleViewSecure(doc)}
+                          className="p-2 hover:bg-slate-100 rounded-lg transition-colors inline-block"
+                          title="View Document"
+                        >
+                          {doc.permissions?.preventScreenshot ? (
+                            <EyeOff className="w-5 h-5 text-red-500" />
+                          ) : (
+                            <Eye className="w-5 h-5 text-emerald-500" />
+                          )}
+                        </button>
+                      ) : (
+                        <div title="View Restricted" className="p-2 text-slate-300 inline-block cursor-not-allowed">
+                          <EyeOff className="w-5 h-5" />
+                        </div>
+                      )}
                     </td>
                   </tr>
                 )) : (
@@ -161,6 +202,46 @@ const PublicDocuments = () => {
         </div>
 
       </div>
+
+      <AnimatePresence>
+        {viewState.isOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] bg-slate-900/95 backdrop-blur-md flex items-center justify-center p-4 selection:bg-transparent"
+            onContextMenu={(e) => e.preventDefault()}
+            style={{ WebkitUserSelect: 'none', userSelect: 'none' }}
+          >
+            <button 
+              onClick={() => setViewState({ isOpen: false, url: null, doc: null })} 
+              className="absolute top-6 right-6 p-2 bg-white/10 hover:bg-red-500 text-white rounded-full transition-colors z-[70]"
+            >
+              <X className="w-6 h-6" />
+            </button>
+            <div className="relative w-full max-w-5xl h-[85vh] bg-white rounded-xl overflow-hidden shadow-2xl ring-1 ring-white/10 flex flex-col">
+              {viewState.isWord ? (
+                <div 
+                  className="flex-1 overflow-auto p-8 md:p-16 bg-white prose prose-slate max-w-none break-words pointer-events-auto" 
+                  dangerouslySetInnerHTML={{ __html: viewState.htmlContent }} 
+                />
+              ) : (
+                <iframe 
+                  src={`${viewState.url}#toolbar=0`} 
+                  className="w-full h-full border-0 pointer-events-auto flex-1" 
+                  title="Secure Viewer"
+                  onContextMenu={(e) => e.preventDefault()}
+                />
+              )}
+              <div className="absolute inset-0 z-50 pointer-events-none overflow-hidden flex flex-wrap content-around justify-center opacity-10">
+                {Array.from({length: 30}).map((_, i) => (
+                  <span key={i} className="text-4xl font-bold -rotate-45 text-slate-900 mx-10 my-10 select-none">
+                    {user?.email || 'GUEST-ACCESS'} - PUBLIC VIEW
+                  </span>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </section>
   );
 };

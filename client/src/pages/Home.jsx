@@ -4,7 +4,6 @@ import Hero from '../components/Landing/Hero';
 import Features from '../components/Landing/Features';
 import PublicDocuments from '../components/Landing/PublicDocuments';
 import HowItWorks from '../components/Landing/HowItWorks';
-import Pricing from '../components/Landing/Pricing';
 import Testimonials from '../components/Landing/Testimonials';
 import Contact from '../components/Landing/Contact';
 import Footer from '../components/Landing/Footer';
@@ -17,7 +16,6 @@ const Home = () => {
       <PublicDocuments />
       <Features />
       <HowItWorks />
-      <Pricing />
       <Testimonials />
       <Contact />
       <Footer />

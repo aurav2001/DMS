@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const Document = require('../models/Document');
+const bcrypt = require('bcryptjs');
 
 // Get all users
 const getAllUsers = async (req, res) => {
@@ -94,4 +95,31 @@ const updateDocPermissions = async (req, res) => {
     }
 };
 
-module.exports = { getAllUsers, updateUserRole, deleteUser, getStats, getAllDocuments, updateDocPermissions };
+// Create new user (Admin only)
+const createUser = async (req, res) => {
+    try {
+        const { name, email, password, role } = req.body;
+        
+        let user = await User.findOne({ email });
+        if (user) return res.status(400).json({ message: 'User already exists' });
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const newUser = new User({ 
+            name, 
+            email, 
+            password: hashedPassword, 
+            role: role || 'Viewer' 
+        });
+        
+        await newUser.save();
+        
+        const createdUser = newUser.toObject();
+        delete createdUser.password;
+        res.status(201).json(createdUser);
+    } catch (err) {
+        console.error('Admin Create User Error:', err);
+        res.status(500).json({ message: err.message });
+    }
+};
+
+module.exports = { getAllUsers, updateUserRole, deleteUser, getStats, getAllDocuments, updateDocPermissions, createUser };

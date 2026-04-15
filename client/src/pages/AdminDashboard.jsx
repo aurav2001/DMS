@@ -6,8 +6,9 @@ import axios from 'axios';
 import { 
   Users, FileText, HardDrive, Shield, Trash2, Eye, EyeOff, 
   Download, Edit3, Camera, CameraOff, Lock, Unlock, ChevronDown,
-  BarChart3, ArrowLeft, Search, AlertTriangle
+  BarChart3, ArrowLeft, Search, AlertTriangle, X, UserPlus
 } from 'lucide-react';
+import AddUserModal from '../components/Admin/AddUserModal';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -20,6 +21,9 @@ const AdminDashboard = () => {
   const [documents, setDocuments] = useState([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [sharingModal, setSharingModal] = useState({ isOpen: false, user: null });
+  const [userSearch, setUserSearch] = useState('');
+  const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
 
   useEffect(() => {
     if (!user || user.role !== 'Admin') {
@@ -39,8 +43,12 @@ const AdminDashboard = () => {
         const res = await axios.get(`${API_BASE}/admin/users`);
         setUsers(res.data);
       } else if (activeTab === 'documents') {
-        const res = await axios.get(`${API_BASE}/admin/documents`);
-        setDocuments(res.data);
+        const [docRes, userRes] = await Promise.all([
+          axios.get(`${API_BASE}/admin/documents`),
+          axios.get(`${API_BASE}/admin/users`)
+        ]);
+        setDocuments(docRes.data);
+        setUsers(userRes.data);
       }
     } catch (err) {
       console.error(err);
@@ -93,7 +101,7 @@ const AdminDashboard = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-white">
+    <div className="min-h-screen bg-gradient-to-br from-[#020617] via-[#050811] to-[#080d1a] text-white">
       {/* Header */}
       <header className="border-b border-white/10 bg-black/20 backdrop-blur-xl sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
@@ -141,15 +149,32 @@ const AdminDashboard = () => {
 
         {/* Search (for users/docs tabs) */}
         {activeTab !== 'overview' && (
-          <div className="relative mb-6">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-            <input
-              type="text"
-              placeholder={`Search ${activeTab}...`}
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="w-full max-w-md pl-12 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition"
-            />
+          <div className="flex flex-col md:flex-row gap-4 mb-6">
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+              <input
+                type="text"
+                placeholder={`Search ${activeTab}...`}
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="w-full pl-12 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition"
+              />
+            </div>
+            {activeTab === 'users' && (
+              <button 
+                onClick={() => setIsAddUserModalOpen(true)}
+                className="flex items-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-medium transition shadow-lg shadow-indigo-600/20 group"
+              >
+                <UserPlus className="w-5 h-5 transition-transform group-hover:scale-110" />
+                Add New User
+              </button>
+            )}
+            {activeTab === 'users' && isAddUserModalOpen && (
+              <AddUserModal 
+                onClose={() => setIsAddUserModalOpen(false)}
+                onSuccess={fetchData}
+              />
+            )}
           </div>
         )}
 
@@ -278,11 +303,20 @@ const AdminDashboard = () => {
                             {new Date(u.createdAt).toLocaleDateString()}
                           </td>
                           <td className="p-4">
-                            {u._id !== user?.id && (
-                              <button onClick={() => deleteUser(u._id)} className="p-2 hover:bg-red-500/20 rounded-lg text-red-400 transition">
-                                <Trash2 className="w-4 h-4" />
+                            <div className="flex items-center gap-2">
+                              <button 
+                                onClick={() => setSharingModal({ isOpen: true, user: u })}
+                                className="p-2 hover:bg-indigo-500/20 rounded-lg text-indigo-400 transition"
+                                title="Share specific document with this user"
+                              >
+                                <FileText className="w-4 h-4" />
                               </button>
-                            )}
+                              {u._id !== user?.id && (
+                                <button onClick={() => deleteUser(u._id)} className="p-2 hover:bg-red-500/20 rounded-lg text-red-400 transition">
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -303,6 +337,7 @@ const AdminDashboard = () => {
                     <DocumentPermissionCard 
                       key={doc._id} 
                       doc={doc} 
+                      users={users}
                       onUpdate={updatePermissions}
                       formatBytes={formatBytes}
                     />
@@ -313,6 +348,81 @@ const AdminDashboard = () => {
                 </div>
               </motion.div>
             )}
+            {/* Sharing Modal */}
+            <AnimatePresence>
+              {sharingModal.isOpen && (
+                <motion.div 
+                  initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                  className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+                >
+                  <motion.div 
+                    initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+                    className="bg-slate-900 border border-white/10 rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl"
+                  >
+                    <div className="p-6 border-b border-white/10 flex justify-between items-center bg-indigo-600/10">
+                      <div>
+                        <h3 className="text-xl font-bold text-white">Select File to Share</h3>
+                        <p className="text-sm text-indigo-300 italic">Picking a document to share with <b>{sharingModal.user?.name}</b></p>
+                      </div>
+                      <button onClick={() => setSharingModal({ isOpen: false, user: null })} className="p-2 hover:bg-white/10 rounded-full transition"><X className="w-6 h-6 text-white" /></button>
+                    </div>
+                    
+                    <div className="p-4">
+                      <div className="relative mb-4">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                        <input 
+                          type="text" 
+                          placeholder="Search document name, uploader name or email..." 
+                          className="w-full pl-10 pr-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm focus:outline-none focus:border-indigo-500"
+                          value={userSearch}
+                          onChange={(e) => setUserSearch(e.target.value)}
+                        />
+                      </div>
+                      
+                      <div className="max-h-[60vh] overflow-y-auto space-y-2 pr-2 custom-scrollbar">
+                        {documents.filter(d => 
+                          d.title.toLowerCase().includes(userSearch.toLowerCase()) ||
+                          d.uploadedBy?.name?.toLowerCase().includes(userSearch.toLowerCase()) ||
+                          d.uploadedBy?.email?.toLowerCase().includes(userSearch.toLowerCase())
+                        ).length > 0 ? (
+                          documents.filter(d => 
+                            d.title.toLowerCase().includes(userSearch.toLowerCase()) ||
+                            d.uploadedBy?.name?.toLowerCase().includes(userSearch.toLowerCase()) ||
+                            d.uploadedBy?.email?.toLowerCase().includes(userSearch.toLowerCase())
+                          ).map(doc => (
+                            <button 
+                              key={doc._id}
+                              onClick={async () => {
+                                try {
+                                  await axios.post(`${API_BASE}/documents/${doc._id}/share`, { email: sharingModal.user.email });
+                                  alert(`Shared ${doc.title} with ${sharingModal.user.name}`);
+                                  setSharingModal({ isOpen: false, user: null });
+                                } catch (err) { alert('Failed to share document'); }
+                              }}
+                              className="w-full flex items-center justify-between p-3 hover:bg-white/5 rounded-xl transition-all border border-transparent hover:border-white/10"
+                            >
+                              <div className="flex items-center gap-3">
+                                <FileText className="w-5 h-5 text-indigo-400" />
+                                <div className="text-left">
+                                  <p className="text-sm font-medium">{doc.title}</p>
+                                  <p className="text-xs text-slate-500">{doc.uploadedBy?.name} • {formatBytes(doc.fileSize)}</p>
+                                </div>
+                              </div>
+                              <div className="px-3 py-1 bg-indigo-500/10 text-indigo-400 rounded-lg text-xs font-bold">Share</div>
+                            </button>
+                          ))
+                        ) : (
+                          <div className="text-center py-8">
+                            <p className="text-sm text-slate-500">No matching documents found</p>
+                            <p className="text-xs text-slate-600 mt-1">Try searching by title or uploader's name/email</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </motion.div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </>
         )}
       </div>
@@ -321,12 +431,19 @@ const AdminDashboard = () => {
 };
 
 // Document Permission Card Component
-const DocumentPermissionCard = ({ doc, onUpdate, formatBytes }) => {
+const DocumentPermissionCard = ({ doc, onUpdate, formatBytes, users }) => {
   const [expanded, setExpanded] = useState(false);
-  const [perms, setPerms] = useState(doc.permissions || {
-    canView: true, canDownload: true, canEdit: false, preventScreenshot: false, watermark: false
-  });
+  const [shareSearch, setShareSearch] = useState('');
+  const [showUserList, setShowUserList] = useState(false);
+  const [sharedUsers, setSharedUsers] = useState(doc.sharedWith || []);
   const [access, setAccess] = useState(doc.accessLevel || 'private');
+  const [perms, setPerms] = useState(doc.permissions || {
+    canView: true,
+    canDownload: true,
+    canEdit: false,
+    preventScreenshot: false,
+    watermark: false
+  });
 
   const togglePerm = (key) => {
     const updated = { ...perms, [key]: !perms[key] };
@@ -411,7 +528,7 @@ const DocumentPermissionCard = ({ doc, onUpdate, formatBytes }) => {
                 <label className="text-sm text-slate-400 mb-3 block">Permissions</label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   {permButtons.map(pb => {
-                    const isOn = pb.key === 'preventScreenshot' || pb.key === 'watermark' ? perms[pb.key] : perms[pb.key];
+                    const isOn = perms[pb.key];
                     const Icon = isOn ? pb.icon : pb.offIcon;
                     return (
                       <button
@@ -419,7 +536,7 @@ const DocumentPermissionCard = ({ doc, onUpdate, formatBytes }) => {
                         onClick={() => togglePerm(pb.key)}
                         className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
                           isOn 
-                            ? `bg-${pb.color}-500/10 border-${pb.color}-500/30 text-${pb.color}-400`
+                            ? `bg-indigo-500/10 border-indigo-500/30 text-indigo-400`
                             : 'bg-white/5 border-white/10 text-slate-500'
                         }`}
                       >
@@ -431,6 +548,97 @@ const DocumentPermissionCard = ({ doc, onUpdate, formatBytes }) => {
                       </button>
                     );
                   })}
+                </div>
+              </div>
+
+              {/* Manage Access Section */}
+              <div className="pt-4 border-t border-white/10">
+                <label className="text-sm text-slate-400 mb-3 block flex justify-between items-center">
+                  <span>Manage Access</span>
+                  <span className="text-xs">{sharedUsers.length} users have access</span>
+                </label>
+                
+                {/* List of Shared Users */}
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {sharedUsers.length > 0 ? sharedUsers.map(uId => {
+                    const u = users.find(user => user._id === uId);
+                    return (
+                      <div key={uId} className="flex items-center gap-2 bg-indigo-500/10 border border-indigo-500/20 px-3 py-1.5 rounded-full text-sm group">
+                        <span className="text-indigo-300">{u?.name || 'Loading...'}</span>
+                        <button 
+                          onClick={async () => {
+                            try {
+                              await axios.post(`${API_BASE}/documents/${doc._id}/unshare`, { userId: uId });
+                              setSharedUsers(prev => prev.filter(id => id !== uId));
+                            } catch (err) { console.error(err); }
+                          }}
+                          className="hover:text-red-400 text-indigo-500 transition"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    );
+                  }) : (
+                    <p className="text-xs text-slate-500 italic">No users have shared access yet.</p>
+                  )}
+                </div>
+
+                {/* Search & Add Member */}
+                <div className="relative">
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                      <input 
+                        type="text" 
+                        placeholder="Search user name or email..." 
+                        value={shareSearch}
+                        onChange={(e) => {
+                          setShareSearch(e.target.value);
+                          setShowUserList(true);
+                        }}
+                        onFocus={() => setShowUserList(true)}
+                        className="w-full pl-10 pr-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm focus:outline-none focus:border-indigo-500"
+                      />
+                    </div>
+                  </div>
+
+                  {showUserList && shareSearch.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-white/10 rounded-xl shadow-2xl z-50 max-h-48 overflow-y-auto py-2">
+                      {users
+                        .filter(u => 
+                          (u.email.toLowerCase().includes(shareSearch.toLowerCase()) || 
+                           u.name.toLowerCase().includes(shareSearch.toLowerCase())) && 
+                          !sharedUsers.includes(u._id)
+                        )
+                        .map(u => (
+                          <button 
+                            key={u._id}
+                            onClick={async () => {
+                              try {
+                                await axios.post(`${API_BASE}/documents/${doc._id}/share`, { email: u.email });
+                                setSharedUsers(prev => [...prev, u._id]);
+                                setShareSearch('');
+                                setShowUserList(false);
+                              } catch (err) { console.error(err); }
+                            }}
+                            className="flex items-center justify-between w-full px-4 py-2 hover:bg-white/5 text-left transition"
+                          >
+                            <div>
+                              <p className="text-sm font-medium">{u.name}</p>
+                              <p className="text-xs text-slate-400">{u.email}</p>
+                            </div>
+                            <span className="text-xs text-indigo-400">Invite</span>
+                          </button>
+                        ))}
+                      {users.filter(u => 
+                        (u.email.toLowerCase().includes(shareSearch.toLowerCase()) || 
+                         u.name.toLowerCase().includes(shareSearch.toLowerCase())) && 
+                        !sharedUsers.includes(u._id)
+                      ).length === 0 && (
+                        <p className="px-4 py-2 text-xs text-slate-500">No matching users found</p>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

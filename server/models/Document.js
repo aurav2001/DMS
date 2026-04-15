@@ -4,7 +4,9 @@ const documentSchema = new mongoose.Schema({
     title: { type: String, required: true },
     fileUrl: { type: String, default: '' },
     fileName: { type: String },
-    fileData: { type: Buffer },
+    fileData: { type: Buffer, default: null }, // Made optional for FS storage
+    storagePath: { type: String, default: '' }, // Path on Local/SFTP storage
+    storageType: { type: String, enum: ['mongodb', 'local', 'sftp'], default: 'mongodb' },
     fileType: { type: String, required: true },
     fileSize: { type: Number, required: true },
     uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
@@ -22,8 +24,11 @@ const documentSchema = new mongoose.Schema({
     },
     accessLevel: { type: String, enum: ['public', 'private', 'restricted'], default: 'private' },
     versions: [{
-        versionNumber: { type: Number, default: 1 },
+        versionNumber: { type: Number, required: true },
         fileUrl: { type: String },
+        storagePath: { type: String },
+        fileData: { type: Buffer },
+        updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
         updatedAt: { type: Date, default: Date.now }
     }],
     createdAt: { type: Date, default: Date.now },

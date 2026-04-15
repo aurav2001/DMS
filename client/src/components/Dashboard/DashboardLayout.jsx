@@ -36,7 +36,8 @@ const DashboardLayout = ({
   setActiveTab, 
   searchQuery, 
   setSearchQuery,
-  docCount 
+  docCount,
+  onShareClick 
 }) => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [userDropdown, setUserDropdown] = useState(false);
@@ -45,7 +46,7 @@ const DashboardLayout = ({
 
   const menuItems = [
     { icon: FileText, label: 'My Documents' },
-    { icon: Users, label: 'Shared with Me' },
+    { icon: Users, label: 'Sharing' },
     { icon: Clock, label: 'Recent' },
     { icon: Star, label: 'Starred' },
     { icon: Trash2, label: 'Trash' },
@@ -83,6 +84,12 @@ const DashboardLayout = ({
                 <Shield className="w-5 h-5" /> Admin Panel
               </button>
             )}
+            <button 
+              onClick={onShareClick}
+              className="w-full flex items-center gap-3 px-4 py-3 mb-2 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 transition-all font-bold group"
+            >
+              <Users className="w-5 h-5 group-hover:scale-110 transition-transform" /> Share a File
+            </button>
             <SidebarLink icon={Settings} label="Settings" />
             <button 
               onClick={logout}
@@ -156,9 +163,11 @@ const DashboardLayout = ({
                 <h1 className="text-2xl font-bold dark:text-white">{activeTab}</h1>
                 <p className="text-sm text-slate-500 dark:text-slate-400">Total {docCount} documents</p>
               </div>
-              <button onClick={onUploadClick} className="btn-primary flex items-center gap-2">
-                <Plus className="w-5 h-5" /> Upload New
-              </button>
+              {user?.role !== 'Viewer' && (
+                <button onClick={onUploadClick} className="btn-primary flex items-center gap-2">
+                  <Plus className="w-5 h-5" /> Upload New
+                </button>
+              )}
             </div>
             {children}
           </div>

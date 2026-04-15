@@ -27,11 +27,12 @@ const DocumentGrid = ({ documents, fetchDocuments }) => {
     };
 
     const handleShare = (id) => {
-        const userId = window.prompt('Enter the user ID to share with:');
-        if (!userId) return;
+        const email = window.prompt('Enter the email of the user to share with:');
+        if (!email) return;
         try {
-            axios.post(`${API_BASE}/documents/${id}/share`, { userId });
-            toast.success('Shared successfully!');
+            axios.post(`${API_BASE}/documents/${id}/share`, { email })
+                .then(res => toast.success(res.data.message))
+                .catch(err => toast.error(err.response?.data?.message || 'Sharing failed'));
         } catch (err) {
             toast.error('Sharing failed');
         }
@@ -58,6 +59,7 @@ const DocumentGrid = ({ documents, fetchDocuments }) => {
                     onStar={handleStar}
                     onDelete={handleDelete}
                     onShare={handleShare}
+                    onRefresh={fetchDocuments}
                 />
             ))}
         </div>

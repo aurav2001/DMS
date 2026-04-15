@@ -3,6 +3,7 @@ import axios from 'axios';
 import DashboardLayout from '../components/Dashboard/DashboardLayout';
 import DocumentGrid from '../components/Dashboard/DocumentGrid';
 import UploadModal from '../components/Dashboard/UploadModal';
+import GlobalShareModal from '../components/Dashboard/GlobalShareModal';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 
@@ -10,6 +11,7 @@ const Dashboard = () => {
     const [documents, setDocuments] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isUploadOpen, setIsUploadOpen] = useState(false);
+    const [isShareModalOpen, setIsShareModalOpen] = useState(false);
     const [activeTab, setActiveTab] = useState('My Documents');
     const [searchQuery, setSearchQuery] = useState('');
     const { token } = useAuth();
@@ -41,6 +43,7 @@ const Dashboard = () => {
     return (
         <DashboardLayout 
             onUploadClick={() => setIsUploadOpen(true)}
+            onShareClick={() => setIsShareModalOpen(true)}
             activeTab={activeTab}
             setActiveTab={setActiveTab}
             searchQuery={searchQuery}
@@ -61,6 +64,13 @@ const Dashboard = () => {
                 <UploadModal 
                     onClose={() => setIsUploadOpen(false)} 
                     onSuccess={handleUploadSuccess} 
+                />
+            )}
+
+            {isShareModalOpen && (
+                <GlobalShareModal 
+                    onClose={() => setIsShareModalOpen(false)}
+                    onSuccess={fetchDocuments}
                 />
             )}
         </DashboardLayout>
