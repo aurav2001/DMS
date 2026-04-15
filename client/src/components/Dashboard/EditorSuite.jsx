@@ -307,7 +307,7 @@ const EditorSuite = ({ doc, onClose, onRefresh }) => {
                     <div className="flex items-center gap-2">
                         <FileText className="w-5 h-5 text-white" />
                         <span className="text-white text-sm font-semibold">{doc.title}</span>
-                        <span className="text-blue-200 text-xs">- DocVault Editor</span>
+                        <span className="bg-yellow-400 text-blue-900 text-[10px] px-1.5 py-0.5 font-bold rounded">v3.0 - NEW WORD EDITOR</span>
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
