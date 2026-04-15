@@ -73,9 +73,13 @@ const AdminDashboard = () => {
 
   const updatePermissions = async (docId, permissions, accessLevel) => {
     try {
-      await axios.patch(`${API_BASE}/admin/documents/${docId}/permissions`, { permissions, accessLevel });
-      setDocuments(prev => prev.map(d => d._id === docId ? { ...d, permissions, accessLevel } : d));
-    } catch (err) { console.error(err); }
+      const res = await axios.patch(`${API_BASE}/admin/documents/${docId}/permissions`, { permissions, accessLevel });
+      const updated = res.data;
+      setDocuments(prev => prev.map(d => d._id === docId ? { ...d, ...updated } : d));
+    } catch (err) {
+      console.error(err);
+      alert(err.response?.data?.message || 'Failed to update permissions');
+    }
   };
 
   const formatBytes = (bytes) => {
@@ -557,19 +561,21 @@ const DocumentPermissionCard = ({ doc, onUpdate, formatBytes, users }) => {
                   <span>Manage Access</span>
                   <span className="text-xs">{sharedUsers.length} users have access</span>
                 </label>
-                
+                <p className="text-xs text-slate-500 italic mb-3">Permissions above apply to every user in this list.</p>
+
                 {/* List of Shared Users */}
                 <div className="flex flex-wrap gap-2 mb-4">
-                  {sharedUsers.length > 0 ? sharedUsers.map(uId => {
-                    const u = users.find(user => user._id === uId);
+                  {sharedUsers.length > 0 ? sharedUsers.map(entry => {
+                    const id = typeof entry === 'object' ? entry._id : entry;
+                    const u = typeof entry === 'object' ? entry : users.find(x => x._id === entry);
                     return (
-                      <div key={uId} className="flex items-center gap-2 bg-indigo-500/10 border border-indigo-500/20 px-3 py-1.5 rounded-full text-sm group">
-                        <span className="text-indigo-300">{u?.name || 'Loading...'}</span>
-                        <button 
+                      <div key={id} className="flex items-center gap-2 bg-indigo-500/10 border border-indigo-500/20 px-3 py-1.5 rounded-full text-sm group">
+                        <span className="text-indigo-300">{u?.name || u?.email || 'Unknown'}</span>
+                        <button
                           onClick={async () => {
                             try {
-                              await axios.post(`${API_BASE}/documents/${doc._id}/unshare`, { userId: uId });
-                              setSharedUsers(prev => prev.filter(id => id !== uId));
+                              const res = await axios.post(`${API_BASE}/documents/${doc._id}/unshare`, { userId: id });
+                              setSharedUsers(res.data?.document?.sharedWith || []);
                             } catch (err) { console.error(err); }
                           }}
                           className="hover:text-red-400 text-indigo-500 transition"
@@ -588,9 +594,9 @@ const DocumentPermissionCard = ({ doc, onUpdate, formatBytes, users }) => {
                   <div className="flex gap-2">
                     <div className="relative flex-1">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                      <input 
-                        type="text" 
-                        placeholder="Search user name or email..." 
+                      <input
+                        type="text"
+                        placeholder="Search user name or email..."
                         value={shareSearch}
                         onChange={(e) => {
                           setShareSearch(e.target.value);
@@ -602,21 +608,23 @@ const DocumentPermissionCard = ({ doc, onUpdate, formatBytes, users }) => {
                     </div>
                   </div>
 
-                  {showUserList && shareSearch.length > 0 && (
-                    <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-white/10 rounded-xl shadow-2xl z-50 max-h-48 overflow-y-auto py-2">
-                      {users
-                        .filter(u => 
-                          (u.email.toLowerCase().includes(shareSearch.toLowerCase()) || 
-                           u.name.toLowerCase().includes(shareSearch.toLowerCase())) && 
-                          !sharedUsers.includes(u._id)
-                        )
-                        .map(u => (
-                          <button 
+                  {showUserList && shareSearch.length > 0 && (() => {
+                    const sharedIds = new Set(sharedUsers.map(e => String(typeof e === 'object' ? e._id : e)));
+                    const matches = users.filter(u =>
+                      (u.email?.toLowerCase().includes(shareSearch.toLowerCase()) ||
+                       u.name?.toLowerCase().includes(shareSearch.toLowerCase())) &&
+                      !sharedIds.has(String(u._id)) &&
+                      String(u._id) !== String(doc.uploadedBy?._id || doc.uploadedBy)
+                    );
+                    return (
+                      <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-white/10 rounded-xl shadow-2xl z-50 max-h-48 overflow-y-auto py-2">
+                        {matches.map(u => (
+                          <button
                             key={u._id}
                             onClick={async () => {
                               try {
-                                await axios.post(`${API_BASE}/documents/${doc._id}/share`, { email: u.email });
-                                setSharedUsers(prev => [...prev, u._id]);
+                                const res = await axios.post(`${API_BASE}/documents/${doc._id}/share`, { email: u.email });
+                                setSharedUsers(res.data?.document?.sharedWith || []);
                                 setShareSearch('');
                                 setShowUserList(false);
                               } catch (err) { console.error(err); }
@@ -630,15 +638,12 @@ const DocumentPermissionCard = ({ doc, onUpdate, formatBytes, users }) => {
                             <span className="text-xs text-indigo-400">Invite</span>
                           </button>
                         ))}
-                      {users.filter(u => 
-                        (u.email.toLowerCase().includes(shareSearch.toLowerCase()) || 
-                         u.name.toLowerCase().includes(shareSearch.toLowerCase())) && 
-                        !sharedUsers.includes(u._id)
-                      ).length === 0 && (
-                        <p className="px-4 py-2 text-xs text-slate-500">No matching users found</p>
-                      )}
-                    </div>
-                  )}
+                        {matches.length === 0 && (
+                          <p className="px-4 py-2 text-xs text-slate-500">No matching users found</p>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
             </div>

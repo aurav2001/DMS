@@ -22,7 +22,7 @@ const COLORS = [
   '#990000', '#b45f06', '#bf9000', '#38761d', '#134f5c', '#0b5394', '#351c75', '#741b47',
 ];
 
-const MSWordOnline = ({ doc, onClose, onRefresh }) => {
+const MSWordOnline = ({ doc, onClose, onRefresh, viewOnly = false, viewerEmail = '' }) => {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [mode, setMode] = useState('');
@@ -41,9 +41,23 @@ const MSWordOnline = ({ doc, onClose, onRefresh }) => {
     const tabs = ['File', 'Home', 'Insert', 'Layout', 'Review', 'View'];
 
     useEffect(() => {
-        console.log('MSWordOnline v5.0 (Nuclear Purge) - Loading:', doc._id);
         loadDocument();
     }, [doc]);
+
+    // Block print + screenshot shortcuts when admin sets preventScreenshot
+    useEffect(() => {
+        if (!doc.permissions?.preventScreenshot) return;
+        const block = (e) => {
+            // Ctrl+P (print), Ctrl+S (save-as), PrintScreen
+            if ((e.ctrlKey && (e.key === 'p' || e.key === 'P')) || e.key === 'PrintScreen') {
+                e.preventDefault();
+                e.stopPropagation();
+                toast.error('Printing/screenshot is disabled for this document');
+            }
+        };
+        window.addEventListener('keydown', block, true);
+        return () => window.removeEventListener('keydown', block, true);
+    }, [doc.permissions?.preventScreenshot]);
 
     const loadDocument = async () => {
         try {
@@ -317,18 +331,21 @@ const MSWordOnline = ({ doc, onClose, onRefresh }) => {
                     <div className="flex items-center gap-2">
                         <FileText className="w-5 h-5 text-white" />
                         <span className="text-white text-sm font-semibold">{doc.title}</span>
-                        <span className="bg-yellow-400 text-blue-900 text-[10px] px-2 py-1 font-black rounded border-2 border-white animate-pulse uppercase tracking-[0.1em]">v5.5 - NUCLEAR BUST - ACTIVE</span>
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
-                    <button 
-                        onClick={handleSave}
-                        disabled={saving}
-                        className="flex items-center gap-1.5 px-4 py-1 bg-white/20 hover:bg-white/30 disabled:opacity-50 text-white text-xs font-semibold rounded transition-all"
-                    >
-                        {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-                        {saving ? 'Saving...' : 'Save'}
-                    </button>
+                    {viewOnly ? (
+                        <span className="px-3 py-1 bg-white/20 text-white text-[10px] font-bold rounded uppercase tracking-widest">View Only</span>
+                    ) : (
+                        <button
+                            onClick={handleSave}
+                            disabled={saving}
+                            className="flex items-center gap-1.5 px-4 py-1 bg-white/20 hover:bg-white/30 disabled:opacity-50 text-white text-xs font-semibold rounded transition-all"
+                        >
+                            {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                            {saving ? 'Saving...' : 'Save'}
+                        </button>
+                    )}
                     <button 
                         onClick={onClose}
                         className="p-1 hover:bg-red-600 text-white rounded transition-all"
@@ -358,7 +375,7 @@ const MSWordOnline = ({ doc, onClose, onRefresh }) => {
             </div>
 
             {/* ===== Ribbon Toolbar ===== */}
-            {mode === 'word' && (
+            {mode === 'word' && !viewOnly && (
                 <div className="bg-[#f3f3f3] border-b border-[#d1d1d1] min-h-[40px]" onClick={e => e.stopPropagation()}>
                     {activeTab === 'Home' && renderHomeTab()}
                     {activeTab === 'Insert' && renderInsertTab()}
@@ -424,29 +441,42 @@ const MSWordOnline = ({ doc, onClose, onRefresh }) => {
             )}
 
             {/* ===== Document Canvas ===== */}
-            <div className="flex-1 overflow-auto bg-[#e8e8e8] flex justify-center py-8 px-4">
+            {(doc.permissions?.preventScreenshot || doc.permissions?.watermark || viewOnly) && (
+                <style>{`@media print { body { display: none !important; } }`}</style>
+            )}
+            <div
+                className="flex-1 overflow-auto bg-[#e8e8e8] flex justify-center py-8 px-4 relative"
+                onContextMenu={viewOnly || doc.permissions?.preventScreenshot ? (e) => e.preventDefault() : undefined}
+                onCopy={doc.permissions?.preventScreenshot ? (e) => e.preventDefault() : undefined}
+                style={doc.permissions?.preventScreenshot ? { userSelect: 'none', WebkitUserSelect: 'none' } : undefined}
+            >
                 {loading ? (
                     <div className="flex flex-col items-center justify-center text-slate-500 gap-4">
                         <Loader2 className="w-12 h-12 animate-spin text-[#185abd]" />
                         <p className="font-medium">Opening document...</p>
                     </div>
                 ) : mode === 'word' ? (
-                    <div 
-                        style={{ 
-                            transform: `scale(${zoom / 100})`, 
+                    <div
+                        style={{
+                            transform: `scale(${zoom / 100})`,
                             transformOrigin: 'top center',
                             transition: 'transform 0.2s ease'
                         }}
                     >
-                        <div 
+                        <div
+                            className="bg-white shadow-[0_2px_10px_rgba(0,0,0,0.12)] relative"
+                            style={{ width: '816px', minHeight: '1056px' }}
+                        >
+                        <div
                             ref={editorRef}
-                            contentEditable
+                            contentEditable={!viewOnly}
                             suppressContentEditableWarning
-                            className="bg-white shadow-[0_2px_10px_rgba(0,0,0,0.12)] outline-none"
+                            onCopy={viewOnly || doc.permissions?.preventScreenshot ? (e) => e.preventDefault() : undefined}
+                            onContextMenu={viewOnly || doc.permissions?.preventScreenshot ? (e) => e.preventDefault() : undefined}
+                            className="outline-none relative z-0"
                             style={{
-                                width: '816px',       /* 8.5 inches * 96 DPI */
-                                minHeight: '1056px',   /* 11 inches * 96 DPI */
-                                padding: '96px 72px',  /* 1 inch top/bottom, 0.75 inch left/right */
+                                minHeight: '1056px',
+                                padding: '96px 72px',
                                 fontFamily: 'Calibri, sans-serif',
                                 fontSize: '11pt',
                                 lineHeight: '1.5',
@@ -461,16 +491,39 @@ const MSWordOnline = ({ doc, onClose, onRefresh }) => {
                                 if (e.ctrlKey && e.key === 's') { e.preventDefault(); handleSave(); }
                                 if (e.ctrlKey && e.key === 'z') { e.preventDefault(); execCommand('undo'); }
                                 if (e.ctrlKey && e.key === 'y') { e.preventDefault(); execCommand('redo'); }
+                                if (doc.permissions?.preventScreenshot && e.ctrlKey && (e.key === 'p' || e.key === 'c' || e.key === 'x')) {
+                                    e.preventDefault();
+                                }
                             }}
                         />
+                        {(viewOnly || doc.permissions?.watermark || doc.permissions?.preventScreenshot) && (
+                            <div className="absolute inset-0 z-10 pointer-events-none overflow-hidden flex flex-wrap content-around justify-center" style={{ opacity: 0.18 }}>
+                                {Array.from({ length: 60 }).map((_, i) => (
+                                    <span key={i} className="text-2xl font-black -rotate-45 text-red-700 mx-8 my-8 select-none uppercase whitespace-nowrap">
+                                        {viewerEmail || 'View Only'} • CONFIDENTIAL
+                                    </span>
+                                ))}
+                            </div>
+                        )}
+                        </div>
                     </div>
                 ) : (
-                    <iframe 
-                        src={pdfUrl} 
-                        className="bg-white shadow-lg rounded"
-                        style={{ width: '816px', height: '90vh' }}
-                        title="PDF Viewer"
-                    />
+                    <div className="relative" style={{ width: '816px', height: '90vh' }}>
+                        <iframe
+                            src={pdfUrl}
+                            className="bg-white shadow-lg rounded w-full h-full"
+                            title="PDF Viewer"
+                        />
+                        {(viewOnly || doc.permissions?.watermark || doc.permissions?.preventScreenshot) && (
+                            <div className="absolute inset-0 z-10 pointer-events-none overflow-hidden flex flex-wrap content-around justify-center" style={{ opacity: 0.18 }}>
+                                {Array.from({ length: 60 }).map((_, i) => (
+                                    <span key={i} className="text-2xl font-black -rotate-45 text-red-700 mx-8 my-8 select-none uppercase whitespace-nowrap">
+                                        {viewerEmail || 'View Only'} • CONFIDENTIAL
+                                    </span>
+                                ))}
+                            </div>
+                        )}
+                    </div>
                 )}
             </div>
 

@@ -25,14 +25,14 @@ const testimonials = [
 
 const Testimonials = () => {
   return (
-    <section className="py-24 bg-white">
+    <section className="py-16 sm:py-20 lg:py-24 bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-16">
-          <h2 className="text-4xl font-bold text-slate-900 mb-4">What Our Users Say</h2>
-          <p className="text-lg text-slate-600">Join thousands of teams who trust DocVault.</p>
+        <div className="text-center mb-10 sm:mb-14 lg:mb-16">
+          <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-3 sm:mb-4">What Our Users Say</h2>
+          <p className="text-base sm:text-lg text-slate-600 px-2">Join thousands of teams who trust DocVault.</p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-8">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 lg:gap-8">
           {testimonials.map((t, index) => (
             <motion.div
               key={index}
@@ -40,21 +40,21 @@ const Testimonials = () => {
               whileInView={{ opacity: 1, scale: 1 }}
               viewport={{ once: true }}
               transition={{ delay: index * 0.1 }}
-              className="p-8 rounded-3xl bg-slate-50 border border-slate-100"
+              className="p-6 sm:p-8 rounded-2xl sm:rounded-3xl bg-slate-50 border border-slate-100"
             >
-              <div className="flex gap-1 mb-6">
+              <div className="flex gap-1 mb-4 sm:mb-6">
                 {[...Array(5)].map((_, i) => (
-                  <Star key={i} className="w-5 h-5 fill-yellow-400 text-yellow-400" />
+                  <Star key={i} className="w-4 h-4 sm:w-5 sm:h-5 fill-yellow-400 text-yellow-400" />
                 ))}
               </div>
-              <p className="text-lg text-slate-700 italic mb-8">"{t.quote}"</p>
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-primary-600 rounded-full flex items-center justify-center text-white font-bold">
+              <p className="text-base sm:text-lg text-slate-700 italic mb-6 sm:mb-8">"{t.quote}"</p>
+              <div className="flex items-center gap-3 sm:gap-4">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-primary-600 rounded-full flex items-center justify-center text-white font-bold shrink-0">
                   {t.avatar}
                 </div>
-                <div>
-                  <div className="font-bold text-slate-900">{t.name}</div>
-                  <div className="text-sm text-slate-500">{t.role}</div>
+                <div className="min-w-0">
+                  <div className="font-bold text-slate-900 text-sm sm:text-base truncate">{t.name}</div>
+                  <div className="text-xs sm:text-sm text-slate-500 truncate">{t.role}</div>
                 </div>
               </div>
             </motion.div>

@@ -34,6 +34,7 @@ import PPTEditor from './PresentationEngine';
 const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
   const [showOptions, setShowOptions] = useState(false);
   const [viewState, setViewState] = useState({ isOpen: false, url: null });
+  const [isViewerOpen, setIsViewerOpen] = useState(false); // Read-only engine viewer
   const [isEditing, setIsEditing] = useState(false); // For Metadata Rename
   const [isEditorOpen, setIsEditorOpen] = useState(false); // For Full Document Editor
   const [editData, setEditData] = useState({ title: doc.title });
@@ -66,13 +67,19 @@ const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
 
   const formatDate = (date) => new Date(date).toLocaleDateString();
 
-  const uploaderId = typeof doc.uploadedBy === 'object' ? doc.uploadedBy?._id : doc.uploadedBy;
-  const isOwner = uploaderId === user?._id || uploaderId === user?.id;
+  const myId = String(user?._id || user?.id || '');
+  const uploaderId = String(typeof doc.uploadedBy === 'object' ? doc.uploadedBy?._id : doc.uploadedBy || '');
+  const isOwner = !!myId && uploaderId === myId;
   const isAdmin = user?.role === 'Admin';
-  
-  const canView = isOwner || isAdmin || doc.permissions?.canView !== false;
-  const canDownload = isOwner || isAdmin || doc.permissions?.canDownload !== false;
-  const canEdit = isOwner || isAdmin || doc.permissions?.canEdit === true;
+  const isShared = (doc.sharedWith || []).some(u => String(typeof u === 'object' ? u?._id : u) === myId);
+
+  const perms = doc.permissions || {};
+  // Admin always bypasses. Everyone else (owner/shared/public) respects toggles.
+  const isPublic = doc.accessLevel === 'public';
+  const hasAccess = isOwner || isAdmin || isShared || isPublic;
+  const canView = isAdmin || (hasAccess && perms.canView !== false);
+  const canDownload = isAdmin || (hasAccess && perms.canDownload !== false);
+  const canEdit = isAdmin || ((isOwner || isShared) && perms.canEdit !== false);
   
   // Supported formats for full editor
   // Robust Detection for Editor Support
@@ -88,6 +95,12 @@ const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
   const isEditorSupported = isPdf || isWord || isExcel || isPPT;
 
   const handleSecureAction = async (action) => {
+    // For View action on Office formats, open the read-only engine (no auto-download)
+    if (action === 'view' && (isWord || isExcel || isPPT)) {
+      setIsViewerOpen(true);
+      return;
+    }
+
     try {
       const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
       const endpoint = action === 'view' ? 'view' : 'download';
@@ -97,7 +110,7 @@ const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
         headers: { 'x-auth-token': token }
       });
       const url = window.URL.createObjectURL(new Blob([response.data], { type: response.headers['content-type'] }));
-      
+
       if (action === 'download') {
         const link = document.createElement('a');
         link.href = url;
@@ -119,7 +132,7 @@ const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
     try {
       setEditLoading(true);
       const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-      await axios.patch(`${API_BASE}/documents/${doc._id}/rename`, editData);
+      await axios.patch(`${API_BASE}/documents/${doc._id}`, editData);
       toast.success('Document updated');
       setIsEditing(false);
       if (onRefresh) onRefresh();
@@ -228,7 +241,7 @@ const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
 
           <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-50 dark:border-white/5">
             <span>
-              <span className="bg-yellow-400 text-blue-900 text-[10px] px-2 py-1 font-black rounded border-2 border-white animate-pulse uppercase tracking-widest">v5.5 - NUCLEAR BUST - ACTIVE</span> {(doc.fileSize / 1024 / 1024).toFixed(2)} MB
+              {(doc.fileSize / 1024 / 1024).toFixed(2)} MB
             </span>
             <span>{formatDate(doc.createdAt)}</span>
           </div>
@@ -266,7 +279,7 @@ const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
                 </button>
               )}
 
-              {user?.role !== 'Viewer' && (isOwner || doc.permissions?.canEdit || isAdmin) && (
+              {(isOwner || isAdmin) && (
                 <button 
                   onClick={() => { onShare(doc._id); setShowOptions(false); }}
                   className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
@@ -308,6 +321,25 @@ const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
                 <p className="text-gray-500 mb-6">The editor doesn't support this specific file type yet.</p>
                 <button onClick={() => setIsEditorOpen(false)} className="px-6 py-2 bg-[#185abd] text-white rounded">Close</button>
               </div>
+            )}
+          </React.Suspense>
+        )}
+      </AnimatePresence>
+
+      {/* Read-only Engine Viewer (Word/Excel/PPT) */}
+      <AnimatePresence>
+        {isViewerOpen && (
+          <React.Suspense fallback={
+            <div className="fixed inset-0 z-[200] bg-slate-900/50 flex items-center justify-center">
+              <Loader2 className="w-12 h-12 text-indigo-500 animate-spin" />
+            </div>
+          }>
+            {isExcel ? (
+              <ExcelEditor doc={doc} onClose={() => setIsViewerOpen(false)} onRefresh={onRefresh} viewOnly viewerEmail={user?.email} />
+            ) : isPPT ? (
+              <PPTEditor doc={doc} onClose={() => setIsViewerOpen(false)} onRefresh={onRefresh} viewOnly viewerEmail={user?.email} />
+            ) : (
+              <MSWordOnline doc={doc} onClose={() => setIsViewerOpen(false)} onRefresh={onRefresh} viewOnly viewerEmail={user?.email} />
             )}
           </React.Suspense>
         )}

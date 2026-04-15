@@ -5,7 +5,7 @@ import PptxGenJS from 'pptxgenjs';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 
-const PPTEditor = ({ doc, onClose, onRefresh }) => {
+const PPTEditor = ({ doc, onClose, onRefresh, viewOnly = false, viewerEmail = '' }) => {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [slides, setSlides] = useState([]); // Array of slide objects {id, title, notes, elements: []}
@@ -14,6 +14,19 @@ const PPTEditor = ({ doc, onClose, onRefresh }) => {
     useEffect(() => {
         loadPPT();
     }, [doc]);
+
+    useEffect(() => {
+        if (!doc.permissions?.preventScreenshot) return;
+        const block = (e) => {
+            if ((e.ctrlKey && (e.key === 'p' || e.key === 'P')) || e.key === 'PrintScreen') {
+                e.preventDefault();
+                e.stopPropagation();
+                toast.error('Printing/screenshot is disabled for this document');
+            }
+        };
+        window.addEventListener('keydown', block, true);
+        return () => window.removeEventListener('keydown', block, true);
+    }, [doc.permissions?.preventScreenshot]);
 
     const loadPPT = async () => {
         try {
@@ -124,14 +137,18 @@ const PPTEditor = ({ doc, onClose, onRefresh }) => {
                 </div>
 
                 <div className="flex items-center gap-3">
-                    <button 
-                        onClick={handleSave}
-                        disabled={saving}
-                        className="flex items-center gap-2 px-6 py-2 bg-white text-[#b7472a] hover:bg-red-50 disabled:opacity-50 text-xs font-black rounded-full transition-all shadow-md group"
-                    >
-                        {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-4 h-4 group-hover:scale-110 transition-transform" />}
-                        {saving ? 'Processing...' : 'Export & Save'}
-                    </button>
+                    {viewOnly ? (
+                        <span className="px-5 py-2 bg-white/20 text-white text-[10px] font-black rounded-full uppercase tracking-widest">View Only</span>
+                    ) : (
+                        <button
+                            onClick={handleSave}
+                            disabled={saving}
+                            className="flex items-center gap-2 px-6 py-2 bg-white text-[#b7472a] hover:bg-red-50 disabled:opacity-50 text-xs font-black rounded-full transition-all shadow-md group"
+                        >
+                            {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-4 h-4 group-hover:scale-110 transition-transform" />}
+                            {saving ? 'Processing...' : 'Export & Save'}
+                        </button>
+                    )}
                     <button 
                         onClick={onClose}
                         className="p-2.5 hover:bg-white/10 text-white rounded-full transition-all"
@@ -172,7 +189,24 @@ const PPTEditor = ({ doc, onClose, onRefresh }) => {
                 </div>
 
                 {/* Main Editor Area */}
-                <div className="flex-1 bg-gray-200/50 p-8 flex flex-col items-center overflow-auto">
+                {(doc.permissions?.preventScreenshot || doc.permissions?.watermark || viewOnly) && (
+                    <style>{`@media print { body { display: none !important; } }`}</style>
+                )}
+                <div
+                    className="flex-1 bg-gray-200/50 p-8 flex flex-col items-center overflow-auto relative"
+                    onContextMenu={viewOnly || doc.permissions?.preventScreenshot ? (e) => e.preventDefault() : undefined}
+                    onCopy={doc.permissions?.preventScreenshot ? (e) => e.preventDefault() : undefined}
+                    style={doc.permissions?.preventScreenshot ? { userSelect: 'none', WebkitUserSelect: 'none' } : undefined}
+                >
+                    {(viewOnly || doc.permissions?.watermark || doc.permissions?.preventScreenshot) && (
+                        <div className="absolute inset-0 z-30 pointer-events-none overflow-hidden flex flex-wrap content-around justify-center" style={{ opacity: 0.18 }}>
+                            {Array.from({ length: 60 }).map((_, i) => (
+                                <span key={i} className="text-2xl font-black -rotate-45 text-red-700 mx-8 my-8 select-none uppercase whitespace-nowrap">
+                                    {viewerEmail || 'View Only'} • CONFIDENTIAL
+                                </span>
+                            ))}
+                        </div>
+                    )}
                     {loading ? (
                         <div className="h-full flex flex-col items-center justify-center gap-4 text-gray-400">
                             <Loader2 className="w-12 h-12 animate-spin text-[#b7472a]" />
@@ -208,10 +242,11 @@ const PPTEditor = ({ doc, onClose, onRefresh }) => {
                             <div className="bg-white rounded-2xl shadow-2xl p-10 min-h-[500px] flex flex-col border border-gray-100">
                                 <div className="flex-1 flex flex-col gap-4">
                                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Global Slide Text</label>
-                                    <textarea 
+                                    <textarea
                                         className="flex-1 w-full p-6 text-xl text-gray-700 bg-gray-50 rounded-xl focus:ring-4 focus:ring-red-500/5 focus:outline-none border-2 border-transparent focus:border-[#b7472a]/20 transition-all resize-none leading-relaxed"
                                         placeholder="Start typing slide content..."
                                         value={slides[activeSlideIndex].text}
+                                        readOnly={viewOnly}
                                         onChange={(e) => handleTextChange(e.target.value)}
                                     />
                                 </div>

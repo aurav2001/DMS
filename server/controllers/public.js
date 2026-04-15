@@ -49,18 +49,22 @@ const getPublicData = async (req, res) => {
 const viewPublicDocument = async (req, res) => {
     try {
         const document = await Document.findOne({ _id: req.params.id, accessLevel: 'public', isDeleted: false });
-        if (!document || !document.fileData) {
+        if (!document) {
             return res.status(404).json({ message: 'Public file not found' });
         }
 
-        // Enforce View permission if toggled by admin
+        const isDownload = req.query.download === '1' || req.query.download === 'true';
+
         if (document.permissions?.canView === false) {
             return res.status(403).json({ message: 'Public viewing for this document is restricted by administrator' });
         }
-        
+        if (isDownload && document.permissions?.canDownload === false) {
+            return res.status(403).json({ message: 'Public download for this document is restricted by administrator' });
+        }
+
         res.set({
             'Content-Type': document.fileType,
-            'Content-Disposition': `inline; filename="${document.fileName || 'view'}"`,
+            'Content-Disposition': `${isDownload ? 'attachment' : 'inline'}; filename="${document.fileName || 'view'}"`,
         });
 
         if (document.storageType === 'local' && document.storagePath) {

@@ -72,6 +72,7 @@ const getAllDocuments = async (req, res) => {
         const documents = await Document.find()
             .select('-fileData')
             .populate('uploadedBy', 'name email')
+            .populate('sharedWith', 'name email')
             .sort({ createdAt: -1 });
         res.json(documents);
     } catch (err) {
@@ -80,17 +81,45 @@ const getAllDocuments = async (req, res) => {
 };
 
 // Update document permissions
+const ALLOWED_PERM_KEYS = ['canView', 'canDownload', 'canEdit', 'preventScreenshot', 'watermark'];
+const ALLOWED_ACCESS_LEVELS = ['public', 'private', 'restricted'];
+
 const updateDocPermissions = async (req, res) => {
     try {
         const { permissions, accessLevel } = req.body;
+        const update = {};
+
+        if (permissions && typeof permissions === 'object') {
+            for (const key of ALLOWED_PERM_KEYS) {
+                if (key in permissions) {
+                    update[`permissions.${key}`] = !!permissions[key];
+                }
+            }
+        }
+        if (accessLevel) {
+            if (!ALLOWED_ACCESS_LEVELS.includes(accessLevel)) {
+                return res.status(400).json({ message: `Invalid accessLevel. Allowed: ${ALLOWED_ACCESS_LEVELS.join(', ')}` });
+            }
+            update.accessLevel = accessLevel;
+        }
+
+        if (Object.keys(update).length === 0) {
+            return res.status(400).json({ message: 'No valid permissions or accessLevel provided' });
+        }
+
         const doc = await Document.findByIdAndUpdate(
             req.params.id,
-            { permissions, accessLevel },
-            { new: true }
-        ).select('-fileData');
+            { $set: update },
+            { new: true, runValidators: true }
+        )
+            .select('-fileData')
+            .populate('uploadedBy', 'name email')
+            .populate('sharedWith', 'name email');
+
         if (!doc) return res.status(404).json({ message: 'Document not found' });
         res.json(doc);
     } catch (err) {
+        console.error('Update Permissions Error:', err);
         res.status(500).json({ message: err.message });
     }
 };
