@@ -22,6 +22,7 @@ const uploadDocument = async (req, res) => {
         if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
 
         const storageType = process.env.STORAGE_TYPE || 'mongodb';
+        console.log(`[STORAGE] Uploading document using storage type: ${storageType}`);
         const newDocument = new Document({
             title: req.body.title || req.file.originalname,
             fileName: req.file.originalname,
@@ -454,13 +455,11 @@ const updateDocumentVersion = async (req, res) => {
         const { id } = req.params;
         const { htmlContent, type } = req.body; 
         
-        console.log('Update Version Trace:', { 
-            id, 
+        console.log(`[EDITOR] Update Version Trace for ${id}:`, { 
             type, 
             hasHtml: !!htmlContent, 
             hasFile: !!req.file,
-            contentType: req.headers['content-type'],
-            bodyKeys: Object.keys(req.body)
+            contentType: req.headers['content-type']
         });
 
         const document = await Document.findById(id);
@@ -498,7 +497,10 @@ const updateDocumentVersion = async (req, res) => {
                     pageNumber: true,
                 });
                 
-                if (document.storageType === 'local') {
+                const storageType = document.storageType || process.env.STORAGE_TYPE || 'mongodb';
+                console.log(`[EDITOR] Saving new ${type} version using ${storageType}`);
+
+                if (storageType === 'local') {
                     const storageDir = process.env.LOCAL_STORAGE_PATH || path.join(__dirname, '../uploads');
                     const newFileName = `v${newVersionNumber}_${document.fileName}`;
                     const filePath = path.join(storageDir, newFileName);

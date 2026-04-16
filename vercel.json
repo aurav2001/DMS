@@ -21,8 +21,12 @@
       "dest": "server/uploads/$1"
     },
     {
+      "src": "/assets/(.*)",
+      "dest": "client/dist/assets/$1"
+    },
+    {
       "src": "/(.*)",
-      "dest": "/$1",
+      "dest": "client/dist/$1",
       "continue": true
     },
     {
@@ -30,7 +34,7 @@
     },
     {
       "src": "/(.*)",
-      "dest": "/index.html"
+      "dest": "client/dist/index.html"
     }
   ]
 }

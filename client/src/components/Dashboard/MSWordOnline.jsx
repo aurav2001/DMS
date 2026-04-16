@@ -898,7 +898,8 @@ const MSWordOnline = ({ doc, onClose, onRefresh }) => {
                             <GroupContainer label="Actions">
                                 <ToolbarButton icon={Save} label="Save" onClick={handleSave} showLabel />
                                 <ToolbarButton icon={FileDown} label="Export" onClick={() => {
-                                    const blob = new Blob([editorRef.current?.innerHTML || ''], { type: 'text/html' });
+                                    const allContent = pages.map(p => p.content).join('<div style="page-break-after: always;"></div>');
+                                    const blob = new Blob([allContent], { type: 'text/html' });
                                     const a = document.createElement('a');
                                     a.href = URL.createObjectURL(blob);
                                     a.download = `${doc.title}.html`;
@@ -913,8 +914,10 @@ const MSWordOnline = ({ doc, onClose, onRefresh }) => {
                             <GroupContainer label="Proofing">
                                 <ToolbarButton icon={FileText} label="Spell Check" onClick={() => {}} showLabel />
                                 <div className="flex flex-col items-center justify-center px-4">
-                                    <span className="text-[10px] font-bold text-[#333]">{editorRef.current?.innerText?.split(/\s+/).filter(Boolean).length || 0}</span>
-                                    <span className="text-[9px] text-[#888]">Words</span>
+                                    <span className="text-[10px] font-bold text-[#333]">
+                                        {pages.reduce((acc, p) => acc + (p.content.replace(/<[^>]*>/g, '').split(/\s+/).filter(Boolean).length || 0), 0)}
+                                    </span>
+                                    <span className="text-[9px] text-[#888]">Total Words</span>
                                 </div>
                             </GroupContainer>
                         </div>
@@ -1058,8 +1061,8 @@ const MSWordOnline = ({ doc, onClose, onRefresh }) => {
                     <div className="flex items-center gap-1 hover:bg-white/10 px-2 cursor-pointer h-full transition-colors">
                         <span>Page {focusedPageIdx + 1} of {pages.length}</span>
                     </div>
-                    <div className="flex items-center gap-1 hover:bg-white/10 px-2 cursor-pointer h-full transition-colors">
-                        <span>{editorRefs.current[focusedPageIdx]?.innerText?.split(/\s+/).filter(Boolean).length || 0} words</span>
+                    <div className="flex items-center gap-1 hover:bg-white/10 px-2 cursor-pointer h-full transition-colors" title="Word Count (Active Page)">
+                        <span>{editorRefs.current[focusedPageIdx]?.innerText?.replace(/[\r\n]+/g, ' ').split(/\s+/).filter(Boolean).length || 0} words</span>
                     </div>
                     <div className="flex items-center gap-1 hover:bg-white/10 px-2 cursor-pointer h-full transition-colors">
                         <Check className="w-2.5 h-2.5" />
