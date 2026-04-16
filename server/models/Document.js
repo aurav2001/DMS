@@ -6,7 +6,7 @@ const documentSchema = new mongoose.Schema({
     fileName: { type: String },
     fileData: { type: Buffer, default: null }, // Made optional for FS storage
     storagePath: { type: String, default: '' }, // Path on Local/SFTP storage
-    storageType: { type: String, enum: ['mongodb', 'local', 'sftp'], default: 'mongodb' },
+    storageType: { type: String, enum: ['mongodb', 'local', 'sftp', 'cloudinary'], default: 'mongodb' },
     fileType: { type: String, required: true },
     fileSize: { type: Number, required: true },
     uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },

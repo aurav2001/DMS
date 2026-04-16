@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, Presentation, Loader2, ChevronLeft, ChevronRight, Type, Monitor } from 'lucide-react';
+import { X, Save, Presentation, Loader2, ChevronLeft, ChevronRight, Type, Monitor, ExternalLink } from 'lucide-react';
 import JSZip from 'jszip';
 import PptxGenJS from 'pptxgenjs';
 import axios from 'axios';
 import toast from 'react-hot-toast';
+import { getDocType } from '../../utils/fileUtils';
 
 const PPTEditor = ({ doc, onClose, onRefresh }) => {
     const [loading, setLoading] = useState(true);
@@ -25,10 +26,14 @@ const PPTEditor = ({ doc, onClose, onRefresh }) => {
                 headers: { 'x-auth-token': token }
             });
 
+            const docInfo = getDocType(doc.fileType, doc.fileName, doc.title);
+            
             // Validate ZIP header (PPTX files must start with PK)
             const bytes = new Uint8Array(res.data);
-            if (bytes[0] !== 0x50 || bytes[1] !== 0x4B) {
-                throw new Error("Invalid format: This file is not a valid PowerPoint document (.pptx). Missing ZIP header.");
+            if (docInfo.isPPT) {
+                if (bytes[0] !== 0x50 || bytes[1] !== 0x4B) {
+                    throw new Error("Invalid format: This file is not a valid PowerPoint document (.pptx). Missing ZIP header.");
+                }
             }
 
             const zip = await JSZip.loadAsync(res.data);
@@ -106,24 +111,45 @@ const PPTEditor = ({ doc, onClose, onRefresh }) => {
         }
     };
 
+    const openInDesktop = async () => {
+        try {
+            const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+            const token = localStorage.getItem('token');
+            await axios.post(`${API_BASE}/documents/${doc._id}/open-in-desktop`, {}, {
+                headers: { 'x-auth-token': token }
+            });
+            toast.success(`Opening ${doc.title} in PowerPoint...`, { icon: '🚀' });
+        } catch (err) {
+            toast.error('Failed to open Desktop Application');
+        }
+    };
+
     return (
         <div className="fixed inset-0 z-[200] bg-[#f0f2f5] flex flex-col font-sans">
             {/* Header */}
             <div className="h-14 bg-[#b7472a] flex items-center justify-between px-4 shadow-lg z-50">
                 <div className="flex items-center gap-3">
-                    <div className="bg-white/20 p-2 rounded-xl">
+                    <div className="bg-white/10 p-2 rounded-xl backdrop-blur-sm border border-white/5">
                         <Presentation className="w-6 h-6 text-white" />
                     </div>
                     <div>
-                        <h2 className="text-white font-bold text-sm">{doc.title}</h2>
-                        <div className="flex items-center gap-2">
-                            <span className="bg-white/20 text-white text-[9px] px-1.5 py-0.5 rounded font-black uppercase tracking-wider">PPT Editor v1.0</span>
-                            <span className="text-red-100 text-[10px] font-medium opacity-80">Slide {activeSlideIndex + 1} of {slides.length}</span>
+                        <h2 className="text-white font-bold text-sm tracking-tight">{doc.title}</h2>
+                        <div className="flex items-center gap-2 mt-0.5">
+                            <span className="bg-white/20 text-white text-[8px] px-1.5 py-0.5 rounded font-black uppercase tracking-wider border border-white/10">Premium Editor</span>
+                            <span className="text-red-100 text-[9px] font-medium opacity-80">Slide {activeSlideIndex + 1} of {slides.length}</span>
                         </div>
                     </div>
                 </div>
 
                 <div className="flex items-center gap-3">
+                    <button 
+                        onClick={openInDesktop}
+                        className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white border border-white/20 text-[11px] font-bold rounded-full transition-all group"
+                    >
+                        <Monitor className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
+                        <span>Open in Desktop</span>
+                        <ExternalLink className="w-2.5 h-2.5 opacity-50" />
+                    </button>
                     <button 
                         onClick={handleSave}
                         disabled={saving}

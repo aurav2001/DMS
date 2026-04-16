@@ -69,3 +69,61 @@
 .gradient-text {
   @apply bg-clip-text text-transparent bg-gradient-to-r from-primary-600 to-indigo-600 dark:from-primary-400 dark:to-indigo-400;
 }
+
+/* Word Clone Utilities */
+.thin-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.thin-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.thin-scrollbar::-webkit-scrollbar-thumb {
+  background: #c8c6c4;
+  border-radius: 10px;
+}
+.thin-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #a19f9d;
+}
+
+.word-page {
+  box-shadow: 0 0 0 1px #d1d1d1, 0 8px 16px rgba(0,0,0,0.1);
+  transition: all 0.2s ease;
+}
+
+.word-page:focus-within {
+  box-shadow: 0 0 0 1px #2b579a, 0 12px 24px rgba(0,0,0,0.15);
+}
+
+.word-page ul {
+  list-style-type: disc !important;
+  margin-left: 20px !important;
+  padding-left: 10px !important;
+}
+
+.word-page ol {
+  list-style-type: decimal !important;
+  margin-left: 20px !important;
+  padding-left: 10px !important;
+}
+
+.word-page li {
+  margin-bottom: 2px !important;
+}
+
+/* Ensure images and tables don't overflow */
+.word-page img {
+  max-width: 100%;
+  height: auto;
+}
+
+.word-page table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 10px 0;
+}
+
+.word-page td, .word-page th {
+  border: 1px solid #d1d1d1;
+  padding: 4px 8px;
+}

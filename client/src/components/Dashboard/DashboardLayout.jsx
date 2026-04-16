@@ -14,7 +14,8 @@ import {
   ChevronDown,
   Moon,
   Sun,
-  LogOut
+  LogOut,
+  RefreshCw
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -37,7 +38,8 @@ const DashboardLayout = ({
   searchQuery, 
   setSearchQuery,
   docCount,
-  onShareClick 
+  onShareClick,
+  onSyncClick
 }) => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [userDropdown, setUserDropdown] = useState(false);
@@ -89,6 +91,12 @@ const DashboardLayout = ({
               className="w-full flex items-center gap-3 px-4 py-3 mb-2 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 transition-all font-bold group"
             >
               <Users className="w-5 h-5 group-hover:scale-110 transition-transform" /> Share a File
+            </button>
+            <button 
+              onClick={onSyncClick}
+              className="w-full flex items-center gap-3 px-4 py-3 mb-2 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 transition-all font-bold group"
+            >
+              <RefreshCw className="w-5 h-5 group-hover:rotate-180 transition-transform duration-500" /> Sync Files
             </button>
             <SidebarLink icon={Settings} label="Settings" />
             <button 

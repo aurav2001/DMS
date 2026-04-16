@@ -9,7 +9,9 @@ const {
     viewDocument,
     unshareDocument,
     updateDocumentMetadata,
-    updateDocumentVersion
+    updateDocumentVersion,
+    syncLocalFiles,
+    openInDesktop
 } = require('../controllers/documents');
 const auth = require('../middleware/auth');
 const upload = require('../middleware/multer');
@@ -35,5 +37,8 @@ router.post('/:id/version', auth, (req, res, next) => {
         next();
     }
 }, updateDocumentVersion);
+
+router.post('/sync', auth, syncLocalFiles);
+router.post('/:id/open-in-desktop', auth, openInDesktop);
 
 module.exports = router;

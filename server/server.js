@@ -3,6 +3,8 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const path = require('path');
+const bcrypt = require('bcryptjs');
+const User = require('./models/User');
 
 dotenv.config();
 
@@ -42,7 +44,28 @@ if (!process.env.MONGO_URI) {
 }
 
 mongoose.connect(process.env.MONGO_URI)
-    .then(() => console.log('MongoDB Connected Successfully'))
+    .then(async () => {
+        console.log('MongoDB Connected Successfully');
+        
+        // Auto-Seed Admin if DB is empty
+        try {
+            const userCount = await User.countDocuments();
+            if (userCount === 0) {
+                console.log('No users found. Seeding default admin...');
+                const hashedPassword = await bcrypt.hash('admin123', 10);
+                const admin = new User({
+                    name: 'System Admin',
+                    email: 'admin@docvault.com',
+                    password: hashedPassword,
+                    role: 'Admin'
+                });
+                await admin.save();
+                console.log('Default Admin Created: admin@docvault.com / admin123');
+            }
+        } catch (seedErr) {
+            console.error('Seeding Error:', seedErr);
+        }
+    })
     .catch(err => {
         console.error('CRITICAL: MongoDB connection error details:');
         console.error(err);

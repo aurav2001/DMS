@@ -40,10 +40,27 @@ const Dashboard = () => {
         setIsUploadOpen(false);
     };
 
+    const handleSync = async () => {
+        const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+        try {
+            setLoading(true);
+            const res = await axios.post(`${API_BASE}/documents/sync`, {}, {
+                headers: { 'x-auth-token': token }
+            });
+            toast.success(res.data.message);
+            fetchDocuments();
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Sync failed');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <DashboardLayout 
             onUploadClick={() => setIsUploadOpen(true)}
             onShareClick={() => setIsShareModalOpen(true)}
+            onSyncClick={handleSync}
             activeTab={activeTab}
             setActiveTab={setActiveTab}
             searchQuery={searchQuery}

@@ -3,7 +3,8 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 
 const register = async (req, res) => {
-    return res.status(403).json({ message: 'Self-registration is disabled. Please contact the administrator to create an account.' });
+    // Temporarily enabled for local setup
+    // return res.status(403).json({ message: 'Self-registration is disabled. Please contact the administrator to create an account.' });
     try {
         const { name, email, password } = req.body;
         
@@ -26,11 +27,21 @@ const register = async (req, res) => {
 const login = async (req, res) => {
     try {
         const { email, password } = req.body;
+        console.log('Login attempt for:', email);
+
         const user = await User.findOne({ email });
-        if (!user) return res.status(400).json({ message: 'Invalid credentials' });
+        if (!user) {
+            console.warn(`[AUTH] Login Failed: User not found (${email})`);
+            return res.status(400).json({ message: 'Invalid credentials - User does not exist' });
+        }
 
         const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) return res.status(400).json({ message: 'Invalid credentials' });
+        if (!isMatch) {
+            console.warn(`[AUTH] Login Failed: Password mismatch for ${email}`);
+            return res.status(400).json({ message: 'Invalid credentials - Incorrect password' });
+        }
+
+        console.log(`[AUTH] Login Success: ${email}`);
 
         const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1d' });
         res.json({ token, user: { id: user._id, name: user.name, email, role: user.role } });

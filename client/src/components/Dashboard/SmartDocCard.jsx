@@ -20,7 +20,9 @@ import {
   Loader2,
   FileEdit,
   FileSpreadsheet,
-  Presentation
+  Presentation,
+  Monitor,
+  ExternalLink
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
@@ -30,6 +32,8 @@ import toast from 'react-hot-toast';
 import MSWordOnline from './MSWordOnline';
 import ExcelEditor from './SpreadsheetEngine';
 import PPTEditor from './PresentationEngine';
+import OfficeViewer from './OfficeViewer';
+import { getDocType, getIconColor, getBgColor } from '../../utils/fileUtils';
 
 const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
   const [showOptions, setShowOptions] = useState(false);
@@ -41,22 +45,17 @@ const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
   const { user } = useAuth();
 
   const getIcon = (type = '', fileName = '', title = '') => {
-    const t = (type || '').toLowerCase();
-    const f = (fileName || '').toLowerCase();
-    const s = (title || '').toLowerCase();
-    
-    // Icon matchers
-    const isImage = t.includes('image');
-    const isPdf = t.includes('pdf') || f.endsWith('.pdf') || s.endsWith('.pdf');
-    const isExcel = t.includes('spreadsheet') || t.includes('excel') || t.includes('csv') || f.endsWith('.xlsx') || f.endsWith('.xls') || f.endsWith('.csv') || s.endsWith('.xlsx') || s.endsWith('.xls') || s.endsWith('.csv');
-    const isPPT = t.includes('presentation') || t.includes('powerpoint') || f.endsWith('.pptx') || f.endsWith('.ppt') || s.endsWith('.pptx') || s.endsWith('.ppt');
-    const isWord = t.includes('word') || t.includes('officedocument.word') || f.endsWith('.docx') || f.endsWith('.doc') || s.endsWith('.docx') || s.endsWith('.doc');
+    const docInfo = getDocType(type, fileName, title);
+    const colorClass = getIconColor(docInfo.mainType);
+    const bgClass = getBgColor(docInfo.mainType);
 
-    if (isImage) return <FileImage className="w-10 h-10 text-orange-500" />;
-    if (isPdf) return <FileText className="w-10 h-10 text-red-500" />;
-    if (isExcel) return <div className="bg-green-100 p-2 rounded-lg"><FileSpreadsheet className="w-10 h-10 text-green-600" /></div>;
-    if (isPPT) return <div className="bg-red-100 p-2 rounded-lg"><Presentation className="w-10 h-10 text-red-600" /></div>;
-    if (isWord) return <div className="bg-blue-100 p-2 rounded-lg"><FileText className="w-10 h-10 text-blue-600" /></div>;
+    if (docInfo.isImage) return <FileImage className={`w-10 h-10 ${colorClass}`} />;
+    if (docInfo.isPdf) return <FileText className={`w-10 h-10 ${colorClass}`} />;
+    if (docInfo.isExcel) return <div className={`${bgClass} p-2 rounded-lg`}><FileSpreadsheet className={`w-10 h-10 ${colorClass}`} /></div>;
+    if (docInfo.isPPT) return <div className={`${bgClass} p-2 rounded-lg`}><Presentation className={`w-10 h-10 ${colorClass}`} /></div>;
+    if (docInfo.isWord) return <div className={`${bgClass} p-2 rounded-lg`}><FileText className={`w-10 h-10 ${colorClass}`} /></div>;
+    
+    const t = (type || '').toLowerCase();
     if (t.includes('video')) return <FileVideo className="w-10 h-10 text-purple-500" />;
     if (t.includes('audio')) return <FileAudio className="w-10 h-10 text-green-500" />;
     if (t.includes('zip') || t.includes('compressed')) return <Archive className="w-10 h-10 text-amber-600" />;
@@ -75,22 +74,10 @@ const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
   const canEdit = isOwner || isAdmin || doc.permissions?.canEdit === true;
   
   // Robust Detection for Editor Support
-  const t = (doc.fileType || '').toLowerCase();
-  const f = (doc.fileName || '').toLowerCase();
-  const s = (doc.title || '').toLowerCase();
-
-  // Helper for case-insensitive extension checking
-  const checkExt = (exts) => exts.some(ext => f.endsWith(ext) || s.endsWith(ext));
-
-  const isExcel = t.includes('spreadsheet') || t.includes('excel') || t.includes('csv') || checkExt(['.xlsx', '.xls', '.csv']);
-  const isPPT = t.includes('presentation') || t.includes('powerpoint') || checkExt(['.pptx', '.ppt']);
-  const isWord = t.includes('word') || t.includes('officedocument.word') || checkExt(['.docx', '.doc']);
-  const isPdf = t.includes('pdf') || checkExt(['.pdf']);
-  
-  const isEditorSupported = isPdf || isWord || isExcel || isPPT;
+  const docInfo = getDocType(doc.fileType, doc.fileName, doc.title);
+  const { isExcel, isPPT, isWord, isPdf, isEditorSupported } = docInfo;
 
   const handleOpenEditor = () => {
-    console.warn('DocVault Editor Trace:', { title: doc.title, fileType: t, fileName: f, isWord, isExcel, isPPT, isPdf });
     if (isEditorSupported) {
       setIsEditorOpen(true);
     } else {
@@ -123,6 +110,23 @@ const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
     } catch (err) {
       console.error(err);
       toast.error('Action failed. Denied.');
+    }
+  };
+
+  const handleOpenDesktop = async (e) => {
+    if (e) e.stopPropagation();
+    try {
+      const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      const token = localStorage.getItem('token');
+      
+      await axios.post(`${API_BASE}/documents/${doc._id}/open-in-desktop`, {}, {
+        headers: { 'x-auth-token': token }
+      });
+      
+      toast.success(`Opening ${doc.title} in Desktop...`, { icon: '🚀' });
+    } catch (err) {
+      console.error('Desktop Open Error:', err);
+      toast.error(err.response?.data?.message || 'Failed to open Desktop App');
     }
   };
 
@@ -215,9 +219,13 @@ const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
             {canView && (
               <button 
                 onClick={(e) => { e.stopPropagation(); handleSecureAction('view'); }}
-                className="cursor-pointer hover:bg-blue-100 hover:scale-105 transition-all text-[9px] px-2 py-0.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-md font-bold flex items-center gap-1 border border-blue-100 dark:border-blue-800/50"
+                className={`cursor-pointer hover:scale-105 transition-all text-[9px] px-2 py-0.5 rounded-md font-bold flex items-center gap-1 border ${
+                  doc.fileUrl?.startsWith('http') 
+                  ? "bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 border-indigo-100 dark:border-indigo-800/50" 
+                  : "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border-blue-100 dark:border-blue-800/50"
+                }`}
               >
-                <Eye className="w-2.5 h-2.5" /> READ
+                <Eye className="w-2.5 h-2.5" /> {doc.fileUrl?.startsWith('http') ? 'VIEW (OFFICE)' : 'READ (LOCAL)'}
               </button>
             )}
             {canDownload && (
@@ -236,12 +244,26 @@ const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
                 {isEditorSupported ? <FileEdit className="w-2.5 h-2.5" /> : <Edit3 className="w-2.5 h-2.5" />} EDIT
               </button>
             )}
+            <button 
+              onClick={handleOpenDesktop}
+              className="cursor-pointer hover:bg-indigo-100 hover:scale-105 transition-all text-[9px] px-2 py-0.5 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-md font-bold flex items-center gap-1 border border-indigo-100 dark:border-indigo-800/50"
+            >
+              <Monitor className="w-2.5 h-2.5" /> OPEN APP
+            </button>
           </div>
 
           <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-50 dark:border-white/5">
-            <span>
-              <span className="bg-yellow-400 text-blue-900 text-[10px] px-2 py-1 font-black rounded border-2 border-white animate-pulse uppercase tracking-widest">v5.5 - NUCLEAR BUST - ACTIVE</span> {(doc.fileSize / 1024 / 1024).toFixed(2)} MB
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-bold text-slate-500">{(doc.fileSize / 1024 / 1024).toFixed(2)} MB</span>
+              {doc.storageType === 'cloudinary' && (
+                <span className="bg-emerald-500/10 text-emerald-600 text-[8px] px-1.5 py-0.5 font-black rounded uppercase tracking-wider border border-emerald-500/20">
+                  Cloud Protected
+                </span>
+              )}
+              {isEditorSupported && (
+                <span className="bg-indigo-500/10 text-indigo-500 text-[8px] px-1.5 py-0.5 font-bold rounded uppercase tracking-wider">Premium Editor</span>
+              )}
+            </div>
             <span>{formatDate(doc.createdAt)}</span>
           </div>
         </div>
@@ -328,6 +350,9 @@ const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
       {/* Secure Viewer Modal */}
       <AnimatePresence>
         {viewState.isOpen && (
+            (isWord || isExcel || isPPT) && doc.fileUrl?.startsWith('http') ? (
+                <OfficeViewer doc={doc} onClose={() => setViewState({ isOpen: false, url: null })} />
+            ) : (
           <motion.div 
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="fixed inset-0 z-[100] bg-slate-900/95 backdrop-blur-xl flex items-center justify-center p-4"
@@ -354,6 +379,7 @@ const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
               </div>
             </div>
           </motion.div>
+            )
         )}
       </AnimatePresence>
     </>

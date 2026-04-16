@@ -3,6 +3,16 @@ const User = require('../models/User');
 const fs = require('fs');
 const path = require('path');
 const { uploadToSFTP, downloadFromSFTP } = require('../utils/sftp');
+const cloudinary = require('cloudinary').v2;
+
+// Configure Cloudinary
+if (process.env.STORAGE_TYPE === 'cloudinary') {
+    cloudinary.config({
+        cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+        api_key: process.env.CLOUDINARY_API_KEY,
+        api_secret: process.env.CLOUDINARY_API_SECRET
+    });
+}
 
 const uploadDocument = async (req, res) => {
     try {
@@ -28,7 +38,14 @@ const uploadDocument = async (req, res) => {
 
         if (storageType === 'local') {
             const fileName = `${Date.now()}-${req.file.originalname}`;
-            const uploadPath = path.join(__dirname, '../uploads', fileName);
+            const storageDir = process.env.LOCAL_STORAGE_PATH || path.join(__dirname, '../uploads');
+            
+            // Create directory if it doesn't exist
+            if (!fs.existsSync(storageDir)) {
+                fs.mkdirSync(storageDir, { recursive: true });
+            }
+
+            const uploadPath = path.join(storageDir, fileName);
             fs.writeFileSync(uploadPath, req.file.buffer);
             newDocument.storagePath = fileName;
         } else if (storageType === 'sftp') {
@@ -36,14 +53,36 @@ const uploadDocument = async (req, res) => {
             const remotePath = `${process.env.SFTP_BASE_PATH || '/uploads'}/${fileName}`;
             await uploadToSFTP(req.file.buffer, remotePath);
             newDocument.storagePath = remotePath;
+        } else if (storageType === 'cloudinary') {
+            // Upload to Cloudinary using buffer
+            const uploadPromise = new Promise((resolve, reject) => {
+                const uploadStream = cloudinary.uploader.upload_stream(
+                    { 
+                        resource_type: 'raw',
+                        folder: 'docvault',
+                        public_id: `${Date.now()}-${req.file.originalname}`
+                    },
+                    (error, result) => {
+                        if (error) reject(error);
+                        else resolve(result);
+                    }
+                );
+                uploadStream.end(req.file.buffer);
+            });
+            
+            const result = await uploadPromise;
+            newDocument.fileUrl = result.secure_url;
+            newDocument.storagePath = result.public_id;
         } else {
             newDocument.fileData = req.file.buffer;
         }
 
         await newDocument.save();
         
-        // Set fileUrl to the download endpoint
-        newDocument.fileUrl = `/api/documents/download/${newDocument._id}`;
+        // Set fileUrl to the download endpoint if not already set by Cloudinary
+        if (!newDocument.fileUrl) {
+            newDocument.fileUrl = `/api/documents/download/${newDocument._id}`;
+        }
         newDocument.versions[0].fileUrl = newDocument.fileUrl;
         await newDocument.save();
 
@@ -58,6 +97,7 @@ const uploadDocument = async (req, res) => {
 };
 
 const downloadDocument = async (req, res) => {
+    try {
         const { versionNumber } = req.params;
         let document = await Document.findById(req.params.id);
         if (!document) return res.status(404).json({ message: 'Document not found' });
@@ -69,50 +109,40 @@ const downloadDocument = async (req, res) => {
         let fileSizeToRes = document.fileSize;
         let storagePathToRes = document.storagePath;
 
-        if (versionNumber) {
-            const version = document.versions.find(v => v.versionNumber.toString() === versionNumber.toString());
-            if (!version) return res.status(404).json({ message: 'Version not found' });
-            
-            // Note: In this system, 'versions' array contains ARCHIVED versions. 
-            // The main document fields (fileData, storagePath) hold the CURRENT version.
-            // If the requested version is the latest, it might be the main one or in the array.
-                                    
-            if (version.fileData) fileDataToRes = version.fileData;
-            if (version.storagePath) storagePathToRes = version.storagePath;
-            // Assuming name/type stay similar or we could store them in version too
-        }
-
-        // Authorization Check
-        const isOwner = document.uploadedBy.toString() === req.user.id;
+        // Authorization/Permission Check
+        const isOwner = document.uploadedBy.toString() === req.user.id.toString();
         const isAdmin = req.user.role === 'Admin';
-        const isShared = document.sharedWith?.includes(req.user.id);
+        const isShared = document.sharedWith?.some(id => id.toString() === req.user.id.toString());
         const isPublic = document.accessLevel === 'public';
 
         if (!isOwner && !isAdmin && !isShared && !isPublic) {
             return res.status(401).json({ message: 'Not authorized to access this document' });
         }
-        
-        // Permission Check: Owner, Admin, and Editors bypass read/download restrictions
-        const canEdit = document.permissions?.canEdit === true || req.user.role === 'Editor';
-        if (!isOwner && !isAdmin && !canEdit && document.permissions?.canDownload === false) {
-            return res.status(403).json({ message: 'Download access is restricted for this document' });
+
+        if (versionNumber) {
+            const version = document.versions.find(v => v.versionNumber.toString() === versionNumber.toString());
+            if (!version) return res.status(404).json({ message: 'Version not found' });
+            
+            if (version.fileUrl) return res.redirect(version.fileUrl);
+            if (version.fileData) fileDataToRes = version.fileData;
+            if (version.storagePath) storagePathToRes = version.storagePath;
         }
-        
+
         res.set({
             'Content-Type': fileTypeToRes,
             'Content-Disposition': `attachment; filename="${fileNameToRes || 'download'}"`,
         });
 
         if (document.storageType === 'local' && storagePathToRes) {
-            const filePath = path.join(__dirname, '../uploads', storagePathToRes);
+            const storageDir = process.env.LOCAL_STORAGE_PATH || path.join(__dirname, '../uploads');
+            const filePath = path.join(storageDir, storagePathToRes);
             if (fs.existsSync(filePath)) {
-                res.set('Content-Length', fileSizeToRes); // Note: might need exact size for old version
+                const stats = fs.statSync(filePath);
+                res.set('Content-Length', stats.size);
                 return fs.createReadStream(filePath).pipe(res);
             }
-        } else if (document.storageType === 'sftp' && storagePathToRes) {
-            const data = await downloadFromSFTP(storagePathToRes);
-            res.set('Content-Length', data.length);
-            return res.send(data);
+        } else if (document.storageType === 'cloudinary') {
+            return res.redirect(document.fileUrl);
         }
 
         if (!fileDataToRes) return res.status(404).json({ message: 'File data not found' });
@@ -132,10 +162,12 @@ const getDocuments = async (req, res) => {
             case 'Sharing':
             case 'Shared with Me':
                 query.sharedWith = req.user.id;
+                query.isDeleted = false;
                 break;
             case 'Starred':
                 query.uploadedBy = req.user.id;
                 query.isStarred = true;
+                query.isDeleted = false;
                 break;
             case 'Trash':
                 if (req.user.role !== 'Admin') {
@@ -147,10 +179,10 @@ const getDocuments = async (req, res) => {
                 if (req.user.role !== 'Admin') {
                     query.uploadedBy = req.user.id;
                 }
+                query.isDeleted = false;
                 break;
             default:
-                // If Admin, show everything in their personal dashboard too? 
-                // Usually better to show their own + shared.
+                query.isDeleted = false;
                 query.$or = [
                     { uploadedBy: req.user.id },
                     { sharedWith: req.user.id }
@@ -179,23 +211,103 @@ const getDocuments = async (req, res) => {
     }
 };
 
+const syncLocalFiles = async (req, res) => {
+    try {
+        if (process.env.STORAGE_TYPE !== 'local') {
+            return res.status(400).json({ message: 'Sync is only available for local storage' });
+        }
+
+        const storageDir = process.env.LOCAL_STORAGE_PATH || path.join(__dirname, '../uploads');
+        console.log('Syncing from directory:', storageDir);
+        
+        if (!fs.existsSync(storageDir)) {
+            console.log('Directory does not exist. Creating it.');
+            fs.mkdirSync(storageDir, { recursive: true });
+            return res.json({ message: 'Storage directory created. No files to sync.', count: 0 });
+        }
+
+        const files = fs.readdirSync(storageDir);
+        console.log('Files found in storage directory:', files);
+        let syncCount = 0;
+
+        for (const file of files) {
+            console.log(`Checking file: ${file}`);
+            // Basic check to see if file is already in DB
+            const existing = await Document.findOne({ 
+                storagePath: file,
+                storageType: 'local'
+            });
+
+            if (!existing) {
+                console.log(`New file detected: ${file}. Adding to database...`);
+                const filePath = path.join(storageDir, file);
+                const stats = fs.statSync(filePath);
+                
+                if (stats.isFile()) {
+                    const ext = path.extname(file).toLowerCase();
+                    let fileType = 'application/octet-stream';
+                    if (ext === '.docx') fileType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+                    else if (ext === '.pdf') fileType = 'application/pdf';
+                    else if (ext === '.txt') fileType = 'text/plain';
+
+                    const newDoc = new Document({
+                        title: file,
+                        fileName: file,
+                        fileType: fileType,
+                        fileSize: stats.size,
+                        uploadedBy: req.user.id,
+                        storageType: 'local',
+                        storagePath: file,
+                        versions: [{
+                            versionNumber: 1,
+                            fileUrl: `/api/documents/download/local/${file}`,
+                        }]
+                    });
+
+                    // Set initial URL
+                    newDoc.fileUrl = `/api/documents/download/${newDoc._id}`;
+                    newDoc.versions[0].fileUrl = newDoc.fileUrl;
+                    
+                    await newDoc.save();
+                    syncCount++;
+                }
+            }
+        }
+
+        res.json({ message: `Sync complete. ${syncCount} new files added.`, count: syncCount });
+    } catch (err) {
+        console.error('Sync Error:', err);
+        res.status(500).json({ message: err.message });
+    }
+};
+
 const deleteDocument = async (req, res) => {
     try {
         const document = await Document.findById(req.params.id);
         if (!document) return res.status(404).json({ message: 'Document not found' });
         
         const isAdmin = req.user.role === 'Admin';
-        const isOwner = document.uploadedBy.toString() === req.user.id;
+        const isOwner = document.uploadedBy.toString() === req.user.id.toString();
 
         if (!isOwner && !isAdmin) {
             return res.status(401).json({ message: 'Not authorized. Only owners or admins can delete documents.' });
         }
+        
         
         if (req.user.role === 'Viewer') {
             return res.status(403).json({ message: 'Viewers are not allowed to delete documents' });
         }
 
         if (document.isDeleted) {
+            // If on Cloudinary, delete from Cloudinary too
+            if (document.storageType === 'cloudinary' && document.storagePath) {
+                try {
+                    // For Word/Excel/PDF, resource_type must be 'raw' to delete correctly
+                    await cloudinary.uploader.destroy(document.storagePath, { resource_type: 'raw' });
+                } catch (cloudErr) {
+                    console.error('Cloudinary Delete Error:', cloudErr);
+                }
+            }
             await Document.findByIdAndDelete(req.params.id);
             res.json({ message: 'Document deleted permanently' });
         } else {
@@ -267,26 +379,14 @@ const viewDocument = async (req, res) => {
             return res.status(404).json({ message: 'File not found' });
         }
         
-        // Permission Check: Owner and Admin bypass restrictions
-        // Authorization Check
-        const isOwner = document.uploadedBy.toString() === req.user.id;
+        const isOwner = document.uploadedBy.toString() === req.user.id.toString();
         const isAdmin = req.user.role === 'Admin';
-        const isShared = document.sharedWith?.includes(req.user.id);
+        const isShared = document.sharedWith?.some(id => id.toString() === req.user.id.toString());
         const isPublic = document.accessLevel === 'public';
 
         if (!isOwner && !isAdmin && !isShared && !isPublic) {
             return res.status(401).json({ message: 'Not authorized to access this document' });
         }
-        
-        // Permission Check: Owner, Admin, and Editors bypass read restrictions
-        const canEdit = document.permissions?.canEdit === true;
-        if (!isOwner && !isAdmin && !canEdit && document.permissions?.canView === false) {
-            return res.status(403).json({ message: 'View access is restricted for this document' });
-        }
-        
-        // Authorization check if needed? The 'auth' middleware is applied, so req.user exists. 
-        // For private documents, we might want to check if they have permissions.
-        // But for now, if they can see it in their Dashboard, they can issue the request. 
         
         res.set({
             'Content-Type': document.fileType,
@@ -294,15 +394,15 @@ const viewDocument = async (req, res) => {
         });
 
         if (document.storageType === 'local' && document.storagePath) {
-            const filePath = path.join(__dirname, '../uploads', document.storagePath);
+            const storageDir = process.env.LOCAL_STORAGE_PATH || path.join(__dirname, '../uploads');
+            const filePath = path.join(storageDir, document.storagePath);
             if (fs.existsSync(filePath)) {
-                res.set('Content-Length', document.fileSize);
+                const stats = fs.statSync(filePath);
+                res.set('Content-Length', stats.size);
                 return fs.createReadStream(filePath).pipe(res);
             }
-        } else if (document.storageType === 'sftp' && document.storagePath) {
-            const data = await downloadFromSFTP(document.storagePath);
-            res.set('Content-Length', data.length);
-            return res.send(data);
+        } else if (document.storageType === 'cloudinary') {
+            return res.redirect(document.fileUrl);
         }
 
         if (!document.fileData) return res.status(404).json({ message: 'File data not found' });
@@ -352,8 +452,17 @@ const HTMLtoDOCX = require('html-to-docx');
 const updateDocumentVersion = async (req, res) => {
     try {
         const { id } = req.params;
-        const { htmlContent, type } = req.body; // type can be 'pdf' or 'docx'
+        const { htmlContent, type } = req.body; 
         
+        console.log('Update Version Trace:', { 
+            id, 
+            type, 
+            hasHtml: !!htmlContent, 
+            hasFile: !!req.file,
+            contentType: req.headers['content-type'],
+            bodyKeys: Object.keys(req.body)
+        });
+
         const document = await Document.findById(id);
         if (!document) return res.status(404).json({ message: 'Document not found' });
 
@@ -390,17 +499,37 @@ const updateDocumentVersion = async (req, res) => {
                 });
                 
                 if (document.storageType === 'local') {
+                    const storageDir = process.env.LOCAL_STORAGE_PATH || path.join(__dirname, '../uploads');
                     const newFileName = `v${newVersionNumber}_${document.fileName}`;
-                    const filePath = path.join(__dirname, '../uploads', newFileName);
+                    const filePath = path.join(storageDir, newFileName);
                     fs.writeFileSync(filePath, docxBuffer);
                     document.storagePath = newFileName;
+                } else if (document.storageType === 'cloudinary') {
+                    const uploadPromise = new Promise((resolve, reject) => {
+                        const uploadStream = cloudinary.uploader.upload_stream(
+                            { 
+                                resource_type: 'raw',
+                                folder: 'docvault',
+                                public_id: `${Date.now()}-v${newVersionNumber}-${document.fileName}`
+                            },
+                            (error, result) => {
+                                if (error) reject(error);
+                                else resolve(result);
+                            }
+                        );
+                        uploadStream.end(docxBuffer);
+                    });
+                    
+                    const result = await uploadPromise;
+                    document.fileUrl = result.secure_url;
+                    document.storagePath = result.public_id;
                 } else {
                     document.fileData = docxBuffer;
                 }
                 document.fileSize = docxBuffer.length;
             } catch (convErr) {
                 console.error('Word Conversion Error:', convErr);
-                return res.status(400).json({ message: 'Failed to convert HTML to DOCX' });
+                return res.status(400).json({ message: `Word Conversion Error: ${convErr.message}` });
             }
         } else if (req.file) {
             // If it's a PDF or direct file upload from editor
@@ -409,6 +538,25 @@ const updateDocumentVersion = async (req, res) => {
                 const filePath = path.join(__dirname, '../uploads', newFileName);
                 fs.writeFileSync(filePath, req.file.buffer);
                 document.storagePath = newFileName;
+            } else if (document.storageType === 'cloudinary') {
+                const uploadPromise = new Promise((resolve, reject) => {
+                    const uploadStream = cloudinary.uploader.upload_stream(
+                        { 
+                            resource_type: 'raw',
+                            folder: 'docvault',
+                            public_id: `${Date.now()}-v${newVersionNumber}-${req.file.originalname}`
+                        },
+                        (error, result) => {
+                            if (error) reject(error);
+                            else resolve(result);
+                        }
+                    );
+                    uploadStream.end(req.file.buffer);
+                });
+                
+                const result = await uploadPromise;
+                document.fileUrl = result.secure_url;
+                document.storagePath = result.public_id;
             } else {
                 document.fileData = req.file.buffer;
             }
@@ -416,15 +564,45 @@ const updateDocumentVersion = async (req, res) => {
             document.fileType = req.file.mimetype;
             document.fileName = req.file.originalname;
         } else {
-            return res.status(400).json({ message: 'No content or file provided for update' });
+            return res.status(400).json({ 
+                message: 'No content or file provided for update',
+                received: { type, hasHtml: !!htmlContent, hasFile: !!req.file }
+            });
         }
 
         document.updatedAt = Date.now();
         await document.save();
 
-        res.json({ message: 'Document version updated', version: currentVersion.versionNumber + 1 });
+        res.json({ message: 'Document version updated', version: document.versions.length });
     } catch (err) {
         console.error('Update Version Error:', err);
+        res.status(500).json({ message: err.message });
+    }
+};
+
+const openInDesktop = async (req, res) => {
+    try {
+        const document = await Document.findById(req.params.id);
+        if (!document) return res.status(404).json({ message: 'Document not found' });
+
+        if (document.storageType !== 'local') {
+            return res.status(400).json({ message: 'Direct desktop editing is only available for local OneDrive storage' });
+        }
+
+        const storageDir = process.env.LOCAL_STORAGE_PATH || path.join(__dirname, '../uploads');
+        const filePath = path.join(storageDir, document.storagePath);
+
+        if (!fs.existsSync(filePath)) {
+            return res.status(404).json({ message: 'File not found on disk' });
+        }
+
+        console.log(`Launching Desktop App for: ${filePath}`);
+        // Windows command to open file with default application
+        require('child_process').exec(`start "" "${filePath}"`);
+
+        res.json({ message: 'Opening in Desktop Application...' });
+    } catch (err) {
+        console.error('Open Desktop Error:', err);
         res.status(500).json({ message: err.message });
     }
 };
@@ -439,5 +617,7 @@ module.exports = {
     viewDocument,
     unshareDocument,
     updateDocumentMetadata,
-    updateDocumentVersion
+    updateDocumentVersion,
+    syncLocalFiles,
+    openInDesktop
 };

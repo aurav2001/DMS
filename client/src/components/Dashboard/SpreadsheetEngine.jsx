@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, FileSpreadsheet, Loader2, Plus, Trash2, ChevronLeft, ChevronRight, Search, Filter } from 'lucide-react';
+import { X, Save, FileSpreadsheet, Loader2, Plus, Trash2, ChevronLeft, ChevronRight, Search, Filter, Monitor, ExternalLink } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import axios from 'axios';
 import toast from 'react-hot-toast';
+import { getDocType } from '../../utils/fileUtils';
 
 const ExcelEditor = ({ doc, onClose, onRefresh }) => {
     const [loading, setLoading] = useState(true);
@@ -27,11 +28,11 @@ const ExcelEditor = ({ doc, onClose, onRefresh }) => {
                 headers: { 'x-auth-token': token }
             });
 
+            const docInfo = getDocType(doc.fileType, doc.fileName, doc.title);
             const wb = XLSX.read(res.data, { type: 'array' });
             
             // Basic validation: XLSX files should start with PK (0x50 0x4B)
-            // Note: CSVs won't have this, so we only check if the filename suggests it's an XLSX
-            if (doc.fileName.endsWith('.xlsx') || doc.fileName.endsWith('.pptx')) {
+            if (docInfo.isExcel && !doc.fileName.endsWith('.csv')) {
                 const bytes = new Uint8Array(res.data);
                 if (bytes[0] !== 0x50 || bytes[1] !== 0x4B) {
                     throw new Error("Invalid format: This file claims to be a spreadsheet but is missing the required XLSX header.");
@@ -118,21 +119,45 @@ const ExcelEditor = ({ doc, onClose, onRefresh }) => {
         }
     };
 
+    const openInDesktop = async () => {
+        try {
+            const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+            const token = localStorage.getItem('token');
+            await axios.post(`${API_BASE}/documents/${doc._id}/open-in-desktop`, {}, {
+                headers: { 'x-auth-token': token }
+            });
+            toast.success(`Opening ${doc.title} in Excel...`, { icon: '🚀' });
+        } catch (err) {
+            toast.error('Failed to open Desktop Application');
+        }
+    };
+
     return (
         <div className="fixed inset-0 z-[200] bg-[#f8f9fa] flex flex-col font-sans">
             {/* Header / Ribbon */}
             <div className="h-14 bg-[#1d6f42] flex items-center justify-between px-4 shadow-md">
                 <div className="flex items-center gap-4">
-                    <div className="bg-white/20 p-1.5 rounded-lg">
+                    <div className="bg-white/10 p-2 rounded-xl backdrop-blur-sm border border-white/5">
                         <FileSpreadsheet className="w-6 h-6 text-white" />
                     </div>
                     <div>
-                        <h2 className="text-white font-bold text-sm leading-tight">{doc.title}</h2>
-                        <p className="text-green-100 text-[10px] uppercase font-bold tracking-wider">Excel Online Editor</p>
+                        <h2 className="text-white font-bold text-sm leading-tight tracking-tight">{doc.title}</h2>
+                        <div className="flex items-center gap-2 mt-0.5">
+                            <span className="bg-white/20 text-white text-[8px] px-1.5 py-0.5 rounded font-black uppercase tracking-wider border border-white/10">Premium Editor</span>
+                            <span className="text-green-100 text-[9px] font-medium opacity-80">Excel Engine Active</span>
+                        </div>
                     </div>
                 </div>
 
                 <div className="flex items-center gap-2">
+                    <button 
+                        onClick={openInDesktop}
+                        className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white border border-white/20 text-[11px] font-bold rounded-full transition-all group"
+                    >
+                        <Monitor className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
+                        <span>Open in Desktop</span>
+                        <ExternalLink className="w-2.5 h-2.5 opacity-50" />
+                    </button>
                     <button 
                         onClick={handleSave}
                         disabled={saving}
