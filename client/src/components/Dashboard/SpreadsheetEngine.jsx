@@ -213,13 +213,13 @@ const ExcelEditor = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
                         <p className="font-bold text-sm">Initializing Spreadsheet Engine...</p>
                     </div>
                 ) : (
-                    <div className="inline-block bg-white shadow-xl rounded-lg border border-gray-300 overflow-hidden min-w-full">
-                        <table className="border-collapse table-fixed w-full">
+                    <div className="inline-block bg-white shadow-[0_10px_40px_rgba(0,0,0,0.1)] rounded-xl border border-gray-300 overflow-hidden min-w-full">
+                        <table className="border-collapse table-fixed w-full font-sans">
                             <thead>
                                 <tr>
-                                    <th className="w-10 bg-gray-50 border border-gray-300 sticky top-0 left-0 z-20"></th>
+                                    <th className="w-10 bg-[#f3f2f1] border border-[#d1d1d1] sticky top-0 left-0 z-20"></th>
                                     {columns.map((col, i) => (
-                                        <th key={i} className="min-w-[120px] h-8 bg-gray-50 border border-gray-300 text-[10px] font-bold text-gray-500 sticky top-0 z-10">
+                                        <th key={i} className="min-w-[120px] h-8 bg-[#f3f2f1] border border-[#d1d1d1] text-[10px] font-bold text-[#616161] sticky top-0 z-10 uppercase">
                                             {col}
                                         </th>
                                     ))}
@@ -228,16 +228,17 @@ const ExcelEditor = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
                             <tbody>
                                 {data.map((row, rowIndex) => (
                                     <tr key={rowIndex}>
-                                        <td className="bg-gray-50 border border-gray-300 text-[10px] font-bold text-center text-gray-500 sticky left-0 z-10">
+                                        <td className="bg-[#f3f2f1] border border-[#d1d1d1] text-[10px] font-bold text-center text-[#616161] sticky left-0 z-10">
                                             {rowIndex + 1}
                                         </td>
                                         {columns.map((_, colIndex) => (
-                                            <td key={colIndex} className="p-0 border border-gray-200 focus-within:ring-2 focus-within:ring-[#1d6f42] focus-within:z-30 relative transition-all">
+                                            <td key={colIndex} className="p-0 border border-[#e1e1e1] focus-within:ring-1 focus-within:ring-[#1d6f42] focus-within:z-30 relative transition-all">
                                                 <input 
-                                                    className="w-full h-8 px-2 text-xs border-none outline-none focus:bg-white bg-transparent hover:bg-gray-50/50 transition-colors"
+                                                    className={`w-full h-8 px-2 text-xs border-none outline-none focus:bg-white bg-transparent ${readOnlyMode ? 'cursor-default' : 'hover:bg-[#f3f2f1]/50'} transition-colors`}
                                                     value={row[colIndex] || ''}
                                                     onChange={(e) => handleCellChange(rowIndex, colIndex, e.target.value)}
                                                     readOnly={readOnlyMode}
+                                                    style={{ color: '#323130' }}
                                                 />
                                             </td>
                                         ))}

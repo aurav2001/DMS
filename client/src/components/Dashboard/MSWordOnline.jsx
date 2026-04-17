@@ -126,6 +126,35 @@ const MSWordOnline = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
                     throw new Error("Invalid file format: This file does not appear to be a valid .docx document (missing ZIP header).");
                 }
 
+                if (readOnlyMode) {
+                  // ✅ HIGH-FIDELITY JUGAD: Use docx-preview for "Same Format" Original look
+                  try {
+                    if (!window.docx) {
+                      await new Promise((resolve) => {
+                        const script = document.createElement('script');
+                        script.src = "https://cdn.jsdelivr.net/npm/docx-preview@0.1.20/dist/docx-preview.js";
+                        script.onload = resolve;
+                        document.head.appendChild(script);
+                      });
+                    }
+                    
+                    setTimeout(async () => {
+                      const container = document.getElementById('high-fidelity-view');
+                      if (container && window.docx) {
+                        await window.docx.renderAsync(res.data, container, null, {
+                          inWrapper: false,
+                          ignoreHeight: false,
+                          ignoreWidth: false,
+                        });
+                        setLoading(false);
+                      }
+                    }, 500);
+                    // We don't return here yet, we let mammoth run as fallback in background
+                  } catch (e) {
+                    console.error("High Fidelity Failed:", e);
+                  }
+                }
+
                 const mammothOptions = {
                     styleMap: [
                         "p[style-name='Heading 1'] => h1:fresh",
@@ -969,7 +998,10 @@ const MSWordOnline = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
                     </div>
                 ) : mode === 'word' ? (
                     <>
-                        {pages.map((page, idx) => (
+                        {readOnlyMode && (
+                            <div id="high-fidelity-view" className="bg-white shadow-[0_8px_30px_rgb(0,0,0,0.12)] mb-8 overflow-hidden" style={{ width: '816px', minHeight: '1056px' }}></div>
+                        )}
+                        {(!readOnlyMode || (pages.length === 1 && !pages[0].content)) && pages.map((page, idx) => (
                             <div 
                                 key={page.id}
                                 style={{ transform: `scale(${zoom / 100})`, transformOrigin: 'top center' }}
