@@ -147,11 +147,13 @@ const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
   const handleMainView = (e) => {
     if (e) e.stopPropagation();
     const isOffice = isWord || isExcel || isPPT;
-    // If it's an Office file and has a URL, prioritize Microsoft/Google Cloud View
-    if (isOffice && doc.fileUrl) {
+    const isCloudOffice = isOffice && doc.fileUrl?.startsWith('http');
+
+    // If it's an Office file and has a CLOUD URL, prioritize Microsoft/Google Cloud View
+    if (isCloudOffice) {
       setViewState({ isOpen: true, url: null, doc });
     } else if (isOffice) {
-      // Fallback to internal premium editor if no public URL
+      // For Local files, use the internal Premium Previewer (fixed high-fidelity)
       handleOpenEditor(true);
     } else {
       handleSecureAction('view');
@@ -396,9 +398,9 @@ const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
         )}
       </AnimatePresence>
 
-      {/* Secure Viewer Modal */}
       <AnimatePresence>
         {viewState.isOpen && (
+            // Re-verify it's a cloud office file before showing OfficeViewer
             (isWord || isExcel || isPPT) && doc.fileUrl?.startsWith('http') ? (
                 <OfficeViewer doc={doc} onClose={() => setViewState({ isOpen: false, url: null })} />
             ) : (

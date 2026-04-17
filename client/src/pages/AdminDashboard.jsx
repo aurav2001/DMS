@@ -412,7 +412,7 @@ const AdminDashboard = () => {
                           const docInfo = getDocType(doc.fileType, doc.fileName, doc.title);
                           const isOffice = docInfo.isWord || docInfo.isExcel || docInfo.isPPT;
                           
-                          if (isOffice && doc.fileUrl) {
+                          if (isOffice && doc.fileUrl?.startsWith('http')) {
                             setViewState({ isOpen: true, url: null, doc });
                           } else if (isOffice) {
                             openInEditor(doc);
@@ -531,7 +531,7 @@ const AdminDashboard = () => {
         {viewState.isOpen && viewState.doc && (
             (() => {
                 const info = getDocType(viewState.doc.fileType, viewState.doc.fileName, viewState.doc.title);
-                if ((info.isWord || info.isExcel || info.isPPT) && viewState.doc.fileUrl) {
+                if ((info.isWord || info.isExcel || info.isPPT) && viewState.doc.fileUrl?.startsWith('http')) {
                     return <OfficeViewer doc={viewState.doc} onClose={() => setViewState({ isOpen: false, url: null, doc: null })} />;
                 }
                 return (
