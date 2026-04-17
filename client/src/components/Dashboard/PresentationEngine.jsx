@@ -6,7 +6,7 @@ import axios from 'axios';
 import toast from 'react-hot-toast';
 import { getDocType } from '../../utils/fileUtils';
 
-const PPTEditor = ({ doc, onClose, onRefresh }) => {
+const PPTEditor = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [slides, setSlides] = useState([]); // Array of slide objects {id, title, notes, elements: []}
@@ -115,12 +115,21 @@ const PPTEditor = ({ doc, onClose, onRefresh }) => {
         try {
             const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
             const token = localStorage.getItem('token');
-            await axios.post(`${API_BASE}/documents/${doc._id}/open-in-desktop`, {}, {
+            const res = await axios.post(`${API_BASE}/documents/${doc._id}/open-in-desktop`, {}, {
                 headers: { 'x-auth-token': token }
             });
-            toast.success(`Opening ${doc.title} in PowerPoint...`, { icon: '🚀' });
+
+            if (res.data.mode === 'protocol' && res.data.uri) {
+                toast.success('Triggering Desktop Application...', { icon: '🚀' });
+                setTimeout(() => {
+                    window.location.href = res.data.uri;
+                }, 1000);
+            } else {
+                toast.success(`Opening ${doc.title} in PowerPoint...`, { icon: '🚀' });
+            }
         } catch (err) {
-            toast.error('Failed to open Desktop Application');
+            console.error('Desktop Open Error:', err);
+            toast.error(err.response?.data?.message || 'Failed to open Desktop Application');
         }
     };
 
@@ -150,14 +159,16 @@ const PPTEditor = ({ doc, onClose, onRefresh }) => {
                         <span>Open in Desktop</span>
                         <ExternalLink className="w-2.5 h-2.5 opacity-50" />
                     </button>
-                    <button 
-                        onClick={handleSave}
-                        disabled={saving}
-                        className="flex items-center gap-2 px-6 py-2 bg-white text-[#b7472a] hover:bg-red-50 disabled:opacity-50 text-xs font-black rounded-full transition-all shadow-md group"
-                    >
-                        {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-4 h-4 group-hover:scale-110 transition-transform" />}
-                        {saving ? 'Processing...' : 'Export & Save'}
-                    </button>
+                    {!readOnlyMode && (
+                        <button 
+                            onClick={handleSave}
+                            disabled={saving}
+                            className="flex items-center gap-2 px-6 py-2 bg-white text-[#b7472a] hover:bg-red-50 disabled:opacity-50 text-xs font-black rounded-full transition-all shadow-md group"
+                        >
+                            {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-4 h-4 group-hover:scale-110 transition-transform" />}
+                            {saving ? 'Processing...' : 'Export & Save'}
+                        </button>
+                    )}
                     <button 
                         onClick={onClose}
                         className="p-2.5 hover:bg-white/10 text-white rounded-full transition-all"
@@ -239,6 +250,7 @@ const PPTEditor = ({ doc, onClose, onRefresh }) => {
                                         placeholder="Start typing slide content..."
                                         value={slides[activeSlideIndex].text}
                                         onChange={(e) => handleTextChange(e.target.value)}
+                                        readOnly={readOnlyMode}
                                     />
                                 </div>
                                 <div className="mt-8 pt-8 border-t border-gray-100 flex items-center justify-between text-gray-400">

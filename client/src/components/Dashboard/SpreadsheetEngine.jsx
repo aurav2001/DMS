@@ -5,7 +5,7 @@ import axios from 'axios';
 import toast from 'react-hot-toast';
 import { getDocType } from '../../utils/fileUtils';
 
-const ExcelEditor = ({ doc, onClose, onRefresh }) => {
+const ExcelEditor = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [workbook, setWorkbook] = useState(null);
@@ -123,12 +123,21 @@ const ExcelEditor = ({ doc, onClose, onRefresh }) => {
         try {
             const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
             const token = localStorage.getItem('token');
-            await axios.post(`${API_BASE}/documents/${doc._id}/open-in-desktop`, {}, {
+            const res = await axios.post(`${API_BASE}/documents/${doc._id}/open-in-desktop`, {}, {
                 headers: { 'x-auth-token': token }
             });
-            toast.success(`Opening ${doc.title} in Excel...`, { icon: '🚀' });
+
+            if (res.data.mode === 'protocol' && res.data.uri) {
+                toast.success('Triggering Desktop Application...', { icon: '🚀' });
+                setTimeout(() => {
+                    window.location.href = res.data.uri;
+                }, 1000);
+            } else {
+                toast.success(`Opening ${doc.title} in Excel...`, { icon: '🚀' });
+            }
         } catch (err) {
-            toast.error('Failed to open Desktop Application');
+            console.error('Desktop Open Error:', err);
+            toast.error(err.response?.data?.message || 'Failed to open Desktop Application');
         }
     };
 
@@ -158,14 +167,16 @@ const ExcelEditor = ({ doc, onClose, onRefresh }) => {
                         <span>Open in Desktop</span>
                         <ExternalLink className="w-2.5 h-2.5 opacity-50" />
                     </button>
-                    <button 
-                        onClick={handleSave}
-                        disabled={saving}
-                        className="flex items-center gap-2 px-5 py-2 bg-white text-[#1d6f42] hover:bg-green-50 disabled:opacity-50 text-xs font-bold rounded-full transition-all shadow-sm"
-                    >
-                        {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-                        {saving ? 'Saving...' : 'Save Changes'}
-                    </button>
+                    {!readOnlyMode && (
+                        <button 
+                            onClick={handleSave}
+                            disabled={saving}
+                            className="flex items-center gap-2 px-5 py-2 bg-white text-[#1d6f42] hover:bg-green-50 disabled:opacity-50 text-xs font-bold rounded-full transition-all shadow-sm"
+                        >
+                            {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                            {saving ? 'Saving...' : 'Save Changes'}
+                        </button>
+                    )}
                     <button 
                         onClick={onClose}
                         className="p-2 hover:bg-red-500 hover:text-white text-white/80 rounded-full transition-all"
@@ -217,6 +228,7 @@ const ExcelEditor = ({ doc, onClose, onRefresh }) => {
                                                     className="w-full h-8 px-2 text-xs border-none outline-none focus:bg-white bg-transparent hover:bg-gray-50/50 transition-colors"
                                                     value={row[colIndex] || ''}
                                                     onChange={(e) => handleCellChange(rowIndex, colIndex, e.target.value)}
+                                                    readOnly={readOnlyMode}
                                                 />
                                             </td>
                                         ))}

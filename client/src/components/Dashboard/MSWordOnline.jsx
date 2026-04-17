@@ -23,7 +23,7 @@ const COLORS = [
   '#990000', '#b45f06', '#bf9000', '#38761d', '#134f5c', '#0b5394', '#351c75', '#741b47',
 ];
 
-const MSWordOnline = ({ doc, onClose, onRefresh }) => {
+const MSWordOnline = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [mode, setMode] = useState('');
@@ -60,11 +60,19 @@ const MSWordOnline = ({ doc, onClose, onRefresh }) => {
             const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
             const token = localStorage.getItem('token');
             
-            await axios.post(`${API_BASE}/documents/${doc._id}/open-in-desktop`, {}, {
+            const res = await axios.post(`${API_BASE}/documents/${doc._id}/open-in-desktop`, {}, {
                 headers: { 'x-auth-token': token }
             });
             
-            toast.success(`Opening ${doc.title} in Desktop App...`, { icon: '🚀' });
+            if (res.data.mode === 'protocol' && res.data.uri) {
+                toast.success('Triggering Desktop Application...', { icon: '🚀' });
+                // Use a small delay to ensure toast is visible
+                setTimeout(() => {
+                    window.location.href = res.data.uri;
+                }, 1000);
+            } else {
+                toast.success(`Opening ${doc.title} in Desktop App...`, { icon: '🚀' });
+            }
         } catch (err) {
             console.error('Desktop Open Error:', err);
             toast.error(err.response?.data?.message || 'Failed to open in Desktop App');
@@ -823,14 +831,16 @@ const MSWordOnline = ({ doc, onClose, onRefresh }) => {
                         </button>
                     </div>
 
-                    <button 
-                        onClick={handleSave}
-                        disabled={saving}
-                        className="flex items-center gap-2 px-3 py-1 bg-[#106ebe] hover:bg-[#005a9e] disabled:opacity-50 text-white text-[11px] font-bold rounded-sm shadow-sm transition-all border border-white/10"
-                    >
-                        {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-                        {saving ? 'Saving...' : 'Save'}
-                    </button>
+                    {!readOnlyMode && (
+                        <button 
+                            onClick={handleSave}
+                            disabled={saving}
+                            className="flex items-center gap-2 px-3 py-1 bg-[#106ebe] hover:bg-[#005a9e] disabled:opacity-50 text-white text-[11px] font-bold rounded-sm shadow-sm transition-all border border-white/10"
+                        >
+                            {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                            {saving ? 'Saving...' : 'Save'}
+                        </button>
+                    )}
 
                     <button 
                         onClick={onClose}
@@ -842,30 +852,32 @@ const MSWordOnline = ({ doc, onClose, onRefresh }) => {
             </div>
 
             {/* ===== Ribbon Tabs (365 Look) ===== */}
-            <div className="bg-[#f3f2f1] border-b border-[#d1d1d1] px-4">
-                <div className="flex items-center">
-                    {tabs.map(tab => (
-                        <button
-                            key={tab}
-                            onClick={() => setActiveTab(tab)}
-                            className={`px-4 py-1.5 text-[11px] font-bold transition-all border-b-2 ${
-                                activeTab === tab 
-                                    ? 'text-[#2b579a] border-[#2b579a] bg-white shadow-sm' 
-                                    : 'text-[#323130] border-transparent hover:bg-white/50 hover:text-[#005a9e]'
-                            }`}
-                        >
-                            {tab}
+            {!readOnlyMode && (
+                <div className="bg-[#f3f2f1] border-b border-[#d1d1d1] px-4">
+                    <div className="flex items-center">
+                        {tabs.map(tab => (
+                            <button
+                                key={tab}
+                                onClick={() => setActiveTab(tab)}
+                                className={`px-4 py-1.5 text-[11px] font-bold transition-all border-b-2 ${
+                                    activeTab === tab 
+                                        ? 'text-[#2b579a] border-[#2b579a] bg-white shadow-sm' 
+                                        : 'text-[#323130] border-transparent hover:bg-white/50 hover:text-[#005a9e]'
+                                }`}
+                            >
+                                {tab}
+                            </button>
+                        ))}
+                        <div className="flex-1" />
+                        <button className="p-1 hover:bg-[#edebe9] rounded-sm">
+                            <ChevronDown className="w-3.5 h-3.5 text-[#605e5c]" />
                         </button>
-                    ))}
-                    <div className="flex-1" />
-                    <button className="p-1 hover:bg-[#edebe9] rounded-sm">
-                        <ChevronDown className="w-3.5 h-3.5 text-[#605e5c]" />
-                    </button>
+                    </div>
                 </div>
-            </div>
+            )}
 
             {/* ===== Ribbon Toolbar ===== */}
-            {mode === 'word' && (
+            {mode === 'word' && !readOnlyMode && (
                 <div className="bg-[#f3f3f3] border-b border-[#d1d1d1] min-h-[92px] flex items-stretch" onClick={e => e.stopPropagation()}>
                     {activeTab === 'Home' && renderHomeTab()}
                     {activeTab === 'Insert' && renderInsertTab()}
@@ -957,7 +969,7 @@ const MSWordOnline = ({ doc, onClose, onRefresh }) => {
                             >
                                 <div 
                                     ref={el => editorRefs.current[idx] = el}
-                                    contentEditable
+                                    contentEditable={!readOnlyMode}
                                     suppressContentEditableWarning
                                     onInput={(e) => handlePageInput(idx, e)}
                                     onKeyDown={(e) => handleKeyDown(e, idx)}

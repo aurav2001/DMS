@@ -40,6 +40,7 @@ const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
   const [viewState, setViewState] = useState({ isOpen: false, url: null });
   const [isEditing, setIsEditing] = useState(false); // For Metadata Rename
   const [isEditorOpen, setIsEditorOpen] = useState(false); // For Full Document Editor
+  const [readOnlyMode, setReadOnlyMode] = useState(false);
   const [editData, setEditData] = useState({ title: doc.title });
   const [editLoading, setEditLoading] = useState(false);
   const { user } = useAuth();
@@ -77,8 +78,9 @@ const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
   const docInfo = getDocType(doc.fileType, doc.fileName, doc.title);
   const { isExcel, isPPT, isWord, isPdf, isEditorSupported } = docInfo;
 
-  const handleOpenEditor = () => {
+  const handleOpenEditor = (readOnly = false) => {
     if (isEditorSupported) {
+      setReadOnlyMode(readOnly);
       setIsEditorOpen(true);
     } else {
       toast('Opening metadata editor (File format not specialized)', { icon: 'ℹ️' });
@@ -158,7 +160,20 @@ const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
           </div>
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             {canView && (
-              <button onClick={() => handleSecureAction('view')} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500 hover:text-indigo-500 transition-all" title="View">
+              <button 
+                onClick={() => {
+                  const isCloudOffice = (isWord || isExcel || isPPT) && doc.fileUrl?.startsWith('http');
+                  if (isCloudOffice) {
+                    setViewState({ isOpen: true, url: null, doc });
+                  } else if (isWord || isExcel || isPPT) {
+                    handleOpenEditor(true);
+                  } else {
+                    handleSecureAction('view');
+                  }
+                }} 
+                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500 hover:text-indigo-500 transition-all" 
+                title="View"
+              >
                 <Eye className="w-4 h-4" />
               </button>
             )}
@@ -218,7 +233,17 @@ const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
           <div className="flex flex-wrap gap-1.5 mt-2">
             {canView && (
               <button 
-                onClick={(e) => { e.stopPropagation(); handleSecureAction('view'); }}
+                onClick={(e) => { 
+                  e.stopPropagation(); 
+                  const isCloudOffice = (isWord || isExcel || isPPT) && doc.fileUrl?.startsWith('http');
+                  if (isCloudOffice) {
+                    setViewState({ isOpen: true, url: null, doc });
+                  } else if (isWord || isExcel || isPPT) {
+                    handleOpenEditor(true);
+                  } else {
+                    handleSecureAction('view');
+                  }
+                }}
                 className={`cursor-pointer hover:scale-105 transition-all text-[9px] px-2 py-0.5 rounded-md font-bold flex items-center gap-1 border ${
                   doc.fileUrl?.startsWith('http') 
                   ? "bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 border-indigo-100 dark:border-indigo-800/50" 
@@ -331,11 +356,11 @@ const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
             </div>
           }>
             {isExcel ? (
-              <ExcelEditor doc={doc} onClose={() => setIsEditorOpen(false)} onRefresh={onRefresh} />
+              <ExcelEditor doc={doc} onClose={() => setIsEditorOpen(false)} onRefresh={onRefresh} readOnlyMode={readOnlyMode} />
             ) : isPPT ? (
-              <PPTEditor doc={doc} onClose={() => setIsEditorOpen(false)} onRefresh={onRefresh} />
+              <PPTEditor doc={doc} onClose={() => setIsEditorOpen(false)} onRefresh={onRefresh} readOnlyMode={readOnlyMode} />
             ) : isWord || isPdf ? (
-              <MSWordOnline doc={doc} onClose={() => setIsEditorOpen(false)} onRefresh={onRefresh} />
+              <MSWordOnline doc={doc} onClose={() => setIsEditorOpen(false)} onRefresh={onRefresh} readOnlyMode={readOnlyMode} />
             ) : (
               <div className="fixed inset-0 z-[200] bg-white flex flex-col items-center justify-center p-10">
                 <h2 className="text-xl font-bold mb-4">Unsupported Format</h2>
