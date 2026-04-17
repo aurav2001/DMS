@@ -97,7 +97,7 @@ const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
         responseType: 'blob',
         headers: { 'x-auth-token': token }
       });
-      const contentType = response.headers['content-type'];
+      const contentType = response.headers['content-type'] || '';
       const url = window.URL.createObjectURL(new Blob([response.data], { type: contentType }));
       
       if (action === 'download') {
@@ -108,13 +108,29 @@ const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
         link.click();
         link.remove();
       } else {
-        // Safety net: Detect Office files from the actual server response type
-        const freshInfo = getDocType(contentType, doc.fileName, doc.title);
-        if (freshInfo.isWord || freshInfo.isExcel || freshInfo.isPPT) {
+        // ULTIMATE JUGAD: Binary Sniffing
+        // We read the first few bytes to identify the file format correctly
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const arr = (new Uint8Array(reader.result)).subarray(0, 4);
+          let header = "";
+          for(let i = 0; i < arr.length; i++) {
+             header += arr[i].toString(16);
+          }
+          
+          // 504b0304 is the PK.. header for DOCX/XLSX/PPTX
+          const isOffice = header.startsWith("504b"); 
+          // 25504446 is %PDF
+          const isPDF = header.startsWith("2550");
+
+          if (isOffice) {
             handleOpenEditor(true);
-        } else {
+          } else {
+            // Normal fallback for PDFs and Images
             setViewState({ isOpen: true, url, doc });
-        }
+          }
+        };
+        reader.readAsArrayBuffer(response.data);
       }
     } catch (err) {
       console.error(err);

@@ -117,13 +117,24 @@ const AdminDashboard = () => {
         link.click();
         link.remove();
       } else {
-        // Safety net: Detect Office files from the actual server response type
-        const freshInfo = getDocType(contentType, doc.fileName, doc.title);
-        if (freshInfo.isWord || freshInfo.isExcel || freshInfo.isPPT) {
+        // ULTIMATE JUGAD: Binary Sniffing for Admins
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const arr = (new Uint8Array(reader.result)).subarray(0, 4);
+          let header = "";
+          for(let i = 0; i < arr.length; i++) {
+             header += arr[i].toString(16);
+          }
+          
+          const isOffice = header.startsWith("504b"); 
+
+          if (isOffice) {
             openInEditor(doc);
-        } else {
+          } else {
             setViewState({ isOpen: true, url, doc });
-        }
+          }
+        };
+        reader.readAsArrayBuffer(response.data);
       }
     } catch (err) {
       console.error(err);
