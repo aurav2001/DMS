@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, FileSpreadsheet, Loader2, Plus, Trash2, ChevronLeft, ChevronRight, Search, Filter, Monitor, ExternalLink } from 'lucide-react';
+import { X, Save, FileSpreadsheet, Loader2, Plus, Trash2, ChevronLeft, ChevronRight, Search, Filter, Monitor, ExternalLink, Shield, Download } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import axios from 'axios';
 import toast from 'react-hot-toast';

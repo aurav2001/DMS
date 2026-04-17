@@ -4,7 +4,7 @@ import { X, Save, FileText, Loader2, Type, Undo2, Redo2, Bold, Italic, Underline
   Link2, Image, Table, Minus, Plus, ChevronDown, Palette, Highlighter, 
   Strikethrough, Subscript, Superscript, IndentIncrease, IndentDecrease,
   Printer, ZoomIn, ZoomOut, FileDown, Copy, Scissors, Clipboard, Share2, Check, Trash, Monitor, ExternalLink,
-  Eye, Lock // 👈 Added for read-only indicator
+  Eye, Lock, Shield, Download // ✅ Added missing icons for Premium View
 } from 'lucide-react';
 import mammoth from 'mammoth';
 import { PDFDocument, rgb } from 'pdf-lib';
