@@ -150,117 +150,112 @@ const ExcelEditor = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
         }
     };
 
-    if (readOnlyMode) {
-        return (
-            <div className="fixed inset-0 z-[200] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-                <div className="bg-white w-full h-full max-w-6xl rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200">
-                    {/* Premium Header */}
-                    <div className="h-16 border-b border-slate-200 flex items-center justify-between px-6 bg-slate-50">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-lg bg-[#185abd]">
-                                <Shield className="w-5 h-5 text-white" />
-                            </div>
-                            <div>
+    return (
+        <div className="fixed inset-0 z-[200] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-white w-full h-full max-w-6xl rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200">
+                {/* Premium Header (Unified) */}
+                <div className="h-16 border-b border-slate-200 flex items-center justify-between px-6 bg-slate-50">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-[#1d6f42]">
+                            <Shield className="w-5 h-5 text-white" />
+                        </div>
+                        <div>
+                            <div className="flex items-center gap-2">
                                 <h3 className="text-sm font-bold text-slate-900 truncate max-w-md">
                                     {doc.title}
                                 </h3>
-                                <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">
-                                    Premium Native Engine (Same Format)
-                                </p>
+                                <span className={`text-[9px] px-1.5 py-0.5 rounded font-black uppercase tracking-wider ${readOnlyMode ? 'bg-amber-100 text-amber-700 border border-amber-200' : 'bg-emerald-100 text-emerald-700 border border-emerald-200'}`}>
+                                    {readOnlyMode ? 'View Only' : 'Edit Mode'}
+                                </span>
                             </div>
-                        </div>
-
-                        <div className="flex items-center gap-3">
-                            <div className="flex bg-slate-200 rounded-lg p-1 mr-2 invisible md:visible">
-                                <button className="px-3 py-1 text-[10px] font-bold rounded-md bg-white text-primary-600 shadow-sm">MS 365</button>
-                                <button className="px-3 py-1 text-[10px] font-bold rounded-md text-slate-500 hover:text-slate-700">Google</button>
-                            </div>
-                            <button onClick={onClose} className="p-2 hover:bg-red-50 text-red-500 rounded-lg transition-colors">
-                                <X className="w-6 h-6" />
-                            </button>
+                            <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">
+                                {readOnlyMode ? 'Premium Native Engine (Same Format)' : 'DocVault Premium Spreadsheet Suite'}
+                            </p>
                         </div>
                     </div>
 
-                    {/* Content Area */}
-                    <div className="flex-1 overflow-auto bg-[#f3f2f1] p-6 flex flex-col items-center relative scroll-smooth thin-scrollbar shadow-inner">
-                        {loading ? (
-                            <div className="flex flex-col items-center justify-center text-slate-500 gap-4 mt-20">
-                                <Loader2 className="w-12 h-12 animate-spin text-[#185abd]" />
-                                <p className="font-medium">Opening document...</p>
-                            </div>
-                        ) : (
-                            <div className="w-full h-full flex flex-col items-center">
-                                <div className="inline-block bg-white shadow-[0_10px_40px_rgba(0,0,0,0.1)] rounded-xl border border-gray-300 overflow-hidden min-w-full">
-                                    <table className="border-collapse table-fixed w-full font-sans">
-                                        <thead>
-                                            <tr>
-                                                <th className="w-10 bg-[#f3f2f1] border border-[#d1d1d1] sticky top-0 left-0 z-20"></th>
-                                                {columns.map((col, i) => (
-                                                    <th key={i} className="min-w-[120px] h-8 bg-[#f3f2f1] border border-[#d1d1d1] text-[10px] font-bold text-[#616161] sticky top-0 z-10 uppercase">
-                                                        {col}
-                                                    </th>
-                                                ))}
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {data.map((row, rowIndex) => (
-                                                <tr key={rowIndex}>
-                                                    <td className="bg-[#f3f2f1] border border-[#d1d1d1] text-[10px] font-bold text-center text-[#616161] sticky left-0 z-10">
-                                                        {rowIndex + 1}
-                                                    </td>
-                                                    {columns.map((_, colIndex) => (
-                                                        <td key={colIndex} className="p-0 border border-[#e1e1e1] relative transition-all">
-                                                            <input 
-                                                                className="w-full h-8 px-2 text-xs border-none outline-none bg-transparent cursor-default"
-                                                                value={row[colIndex] || ''}
-                                                                readOnly
-                                                                style={{ color: '#323130' }}
-                                                            />
-                                                        </td>
-                                                    ))}
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Premium Footer */}
-                    <div className="h-12 border-t border-slate-200 flex items-center justify-between px-6 bg-slate-50">
-                        <div className="flex items-center gap-4 text-[11px] text-slate-500 font-medium">
-                            <span className="flex items-center gap-1.5"><Shield className="w-3 h-3 text-emerald-500" /> Cloud Sync Secure</span>
-                            <span className="hidden md:inline font-bold text-slate-400">V5.8-STABLE</span>
-                            <span className="hidden md:inline">• Optimized View</span>
-                        </div>
+                    <div className="flex items-center gap-3">
                         <button 
-                            onClick={() => {
-                                const link = document.createElement('a');
-                                link.href = doc.fileUrl;
-                                link.download = doc.fileName;
-                                link.click();
-                            }}
-                            className="flex items-center gap-2 px-3 py-1.5 bg-primary-600 hover:bg-primary-700 text-white text-xs font-bold rounded-lg transition-all"
+                            onClick={openInDesktop}
+                            className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-[11px] font-bold rounded-lg transition-all shadow-sm group"
+                            title="Open in Original Microsoft Excel Desktop App"
                         >
-                            <Download className="w-3.5 h-3.5" /> Download
+                            <Monitor className="w-3.5 h-3.5 text-[#1d6f42] group-hover:scale-110 transition-transform" />
+                            <span className="hidden md:inline">Open in Excel</span>
+                        </button>
+
+                        <div className="h-8 w-px bg-slate-200 mx-1 hidden md:block" />
+
+                        <button onClick={onClose} className="p-2 hover:bg-red-50 text-red-500 rounded-lg transition-colors">
+                            <X className="w-6 h-6" />
                         </button>
                     </div>
                 </div>
-            </div>
-        );
-    }
 
-    return (
-        <div className="fixed inset-0 z-[200] bg-[#f8f9fa] flex flex-col font-sans">
-            {/* Header / Ribbon */}
-            <div className="h-14 bg-[#1d6f42] flex items-center justify-between px-4 shadow-md">
-                <div className="flex items-center gap-4">
-                    <div className="bg-white/10 p-2 rounded-xl backdrop-blur-sm border border-white/5">
-                        <FileSpreadsheet className="w-6 h-6 text-white" />
+                {/* Editor Toolbar (Only in Edit mode) */}
+                {!readOnlyMode && (
+                    <div className="h-12 bg-[#f3f2f1] border-b border-[#d1d1d1] flex items-center px-4 gap-4">
+                        <div className="flex bg-white border border-[#d1d1d1] rounded overflow-hidden">
+                            <button className="px-3 py-1 hover:bg-[#edebe9] text-[11px] font-bold border-r border-[#d1d1d1]">File</button>
+                            <button className="px-3 py-1 bg-white text-[#1d6f42] text-[11px] font-bold border-r border-[#d1d1d1]">Home</button>
+                            <button className="px-3 py-1 hover:bg-[#edebe9] text-[11px] font-bold">Insert</button>
+                        </div>
+                        <div className="flex-1 overflow-hidden">
+                            <div className="flex items-center gap-1.5 px-3 py-1 bg-white border border-[#d1d1d1] rounded text-[11px] text-[#323130] italic">
+                                <span>Formula fx: </span>
+                                <input className="flex-1 outline-none font-mono text-[10px]" placeholder="Enter formula..." readOnly={readOnlyMode} />
+                            </div>
+                        </div>
+                        <button onClick={handleSave} disabled={saving} className="flex items-center gap-2 px-4 py-1.5 bg-[#1d6f42] text-white text-[11px] font-bold hover:bg-[#155a34] transition-all rounded shadow-sm">
+                            <Save className="w-3.5 h-3.5" /> {saving ? 'Saving...' : 'Save'}
+                        </button>
                     </div>
-                    <div>
-                        <h2 className="text-white font-bold text-sm leading-tight tracking-tight">{doc.title}</h2>
+                )}
+
+                {/* Content Area */}
+                <div className="flex-1 overflow-auto bg-[#f3f2f1] p-6 flex flex-col items-center relative scroll-smooth thin-scrollbar shadow-inner">
+                    {loading ? (
+                        <div className="flex flex-col items-center justify-center text-slate-500 gap-4 mt-20">
+                            <Loader2 className="w-12 h-12 animate-spin text-[#1d6f42]" />
+                            <p className="font-medium">Opening spreadsheet...</p>
+                        </div>
+                    ) : (
+                        <div className="w-full h-full flex flex-col items-center">
+                            <div className="inline-block bg-white shadow-[0_10px_40px_rgba(0,0,0,0.1)] rounded-xl border border-gray-300 overflow-hidden min-w-full">
+                                <table className="border-collapse table-fixed w-full font-sans">
+                                    <thead>
+                                        <tr>
+                                            <th className="w-10 bg-[#f3f2f1] border border-[#d1d1d1] sticky top-0 left-0 z-20"></th>
+                                            {columns.map((col, i) => (
+                                                <th key={i} className="min-w-[120px] h-8 bg-[#f3f2f1] border border-[#d1d1d1] text-[10px] font-bold text-[#616161] sticky top-0 z-10 uppercase">
+                                                    {col}
+                                                </th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {data.map((row, rowIndex) => (
+                                            <tr key={rowIndex}>
+                                                <td className="bg-[#f3f2f1] border border-[#d1d1d1] text-[10px] font-bold text-center text-[#616161] sticky left-0 z-10">
+                                                    {rowIndex + 1}
+                                                </td>
+                                                {columns.map((_, colIndex) => (
+                                                    <td key={colIndex} className="p-0 border border-[#e1e1e1] relative transition-all">
+                                                        <input 
+                                                            className={`w-full h-8 px-2 text-xs border-none outline-none bg-transparent ${readOnlyMode ? 'cursor-default' : 'focus:bg-emerald-50 focus:ring-1 focus:ring-emerald-500/30'}`}
+                                                            value={row[colIndex] || ''}
+                                                            onChange={(e) => {
+                                                                if (readOnlyMode) return;
+                                                                const newData = [...data];
+                                                                newData[rowIndex][colIndex] = e.target.value;
+                                                                setData(newData);
+                                                            }}
+                                                            readOnly={readOnlyMode}
+                                                            style={{ color: '#323130' }}
+                                                        />
+                                                    </td>
+                                                ))}
+                                            </tr>
                         <div className="flex items-center gap-2 mt-0.5">
                             <span className="bg-white/20 text-white text-[8px] px-1.5 py-0.5 rounded font-black uppercase tracking-wider border border-white/10">Premium Editor</span>
                             <span className="text-green-100 text-[9px] font-medium opacity-80">Excel Engine Active</span>

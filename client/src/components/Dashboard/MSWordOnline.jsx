@@ -805,93 +805,162 @@ const MSWordOnline = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
         </div>
     );
 
-    if (readOnlyMode) {
-        return (
-            <div className="fixed inset-0 z-[200] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-                <div className="bg-white w-full h-full max-w-6xl rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200">
-                    {/* Premium Header (Format Match) */}
-                    <div className="h-16 border-b border-slate-200 flex items-center justify-between px-6 bg-slate-50">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-lg bg-[#185abd]">
-                                <Shield className="w-5 h-5 text-white" />
-                            </div>
-                            <div>
+    return (
+        <div className="fixed inset-0 z-[200] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => { setShowFontPicker(false); setShowSizePicker(false); setShowColorPicker(false); setShowHighlightPicker(false); }}>
+            <div className="bg-white w-full h-full max-w-6xl rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200">
+                {/* Premium Header (Unified View/Edit) */}
+                <div className="h-16 border-b border-slate-200 flex items-center justify-between px-6 bg-slate-50">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-[#185abd]">
+                            <Shield className="w-5 h-5 text-white" />
+                        </div>
+                        <div>
+                            <div className="flex items-center gap-2">
                                 <h3 className="text-sm font-bold text-slate-900 truncate max-w-md">
                                     {doc.title}
                                 </h3>
-                                <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">
-                                    Premium Native Engine (Same Format)
-                                </p>
+                                <span className={`text-[9px] px-1.5 py-0.5 rounded font-black uppercase tracking-wider ${readOnlyMode ? 'bg-amber-100 text-amber-700 border border-amber-200' : 'bg-primary-100 text-primary-700 border border-primary-200'}`}>
+                                    {readOnlyMode ? 'View Only' : 'Edit Mode'}
+                                </span>
                             </div>
+                            <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">
+                                {readOnlyMode ? 'Premium Native Engine (Same Format)' : 'DocVault Premium Editor Suite'}
+                            </p>
                         </div>
+                    </div>
 
-                        <div className="flex items-center gap-3">
-                            <div className="flex bg-slate-200 rounded-lg p-1 mr-2 invisible md:visible">
-                                <button className="px-3 py-1 text-[10px] font-bold rounded-md bg-white text-primary-600 shadow-sm">MS 365</button>
-                                <button className="px-3 py-1 text-[10px] font-bold rounded-md text-slate-500 hover:text-slate-700">Google</button>
-                            </div>
-                            <button onClick={onClose} className="p-2 hover:bg-red-50 text-red-500 rounded-lg transition-colors">
-                                <X className="w-6 h-6" />
+                    <div className="flex items-center gap-3">
+                        <button 
+                            onClick={openInDesktop}
+                            className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-[11px] font-bold rounded-lg transition-all shadow-sm group"
+                            title="Open in Original Microsoft Office Desktop App"
+                        >
+                            <Monitor className="w-3.5 h-3.5 text-[#185abd] group-hover:scale-110 transition-transform" />
+                            <span className="hidden md:inline">Open in Desktop</span>
+                        </button>
+
+                        <div className="h-8 w-px bg-slate-200 mx-1 hidden md:block" />
+
+                        <button onClick={onClose} className="p-2 hover:bg-red-50 text-red-500 rounded-lg transition-colors">
+                            <X className="w-6 h-6" />
+                        </button>
+                    </div>
+                </div>
+
+                {/* Editor Ribbon (Editable Only) */}
+                {!readOnlyMode && (
+                    <div className="bg-[#f3f2f1] border-b border-[#d1d1d1] flex flex-col">
+                        <div className="flex items-center px-4">
+                            {tabs.map(tab => (
+                                <button
+                                    key={tab}
+                                    onClick={() => setActiveTab(tab)}
+                                    className={`px-4 py-1.5 text-[11px] font-bold transition-all border-b-2 ${
+                                        activeTab === tab 
+                                            ? 'text-[#2b579a] border-[#2b579a] bg-white shadow-sm' 
+                                            : 'text-[#323130] border-transparent hover:bg-white/50 hover:text-[#005a9e]'
+                                    }`}
+                                >
+                                    {tab}
+                                </button>
+                            ))}
+                            <div className="flex-1" />
+                            <button onClick={handleSave} disabled={saving} className="flex items-center gap-2 px-4 py-1.5 bg-primary-600 text-white text-[11px] font-bold hover:bg-primary-700 transition-all">
+                                <Save className="w-3 h-3" /> {saving ? 'Saving...' : 'Save'}
                             </button>
                         </div>
-                    </div>
-
-                    {/* Premium Modal Content */}
-                    <div className="flex-1 overflow-auto bg-[#f3f2f1] p-6 flex flex-col items-center relative scroll-smooth thin-scrollbar shadow-inner">
-                        {loading ? (
-                            <div className="flex flex-col items-center justify-center text-slate-500 gap-4 mt-20">
-                                <Loader2 className="w-12 h-12 animate-spin text-[#185abd]" />
-                                <p className="font-medium">Opening document...</p>
-                            </div>
-                        ) : mode === 'word' ? (
-                            <div className="w-full flex flex-col items-center">
-                                {/* High-Fidelity Container */}
-                                {hfStatus !== 'error' && (
-                                    <div className="relative mb-8">
-                                        {hfStatus === 'loading' && (
-                                            <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur-sm rounded-xl">
-                                                <div className="flex flex-col items-center gap-3">
-                                                    <Loader2 className="w-8 h-8 text-primary-600 animate-spin" />
-                                                    <p className="text-xs font-bold text-slate-500 animate-pulse uppercase tracking-wider">Applying Fidelity...</p>
-                                                </div>
-                                            </div>
-                                        )}
-                                        <div id="high-fidelity-view" className="bg-white shadow-[0_10px_40px_rgba(0,0,0,0.1)] rounded-sm" style={{ width: '816px', minHeight: '1056px' }}></div>
+                        
+                        {mode === 'word' && (
+                            <div className="bg-[#f3f3f3] border-t border-[#d1d1d1] min-h-[92px] flex items-stretch">
+                                {activeTab === 'Home' && renderHomeTab()}
+                                {activeTab === 'Insert' && renderInsertTab()}
+                                {activeTab === 'Layout' && (
+                                    <div className="flex px-2 py-0.5 h-full">
+                                        <GroupContainer label="Page Setup">
+                                            <ToolbarButton icon={FileText} label="Margins" onClick={() => {}} showLabel />
+                                            <ToolbarButton icon={AlignCenter} label="Orientation" onClick={() => {}} showLabel />
+                                            <ToolbarButton icon={Minus} label="Size" onClick={() => {}} showLabel />
+                                        </GroupContainer>
                                     </div>
                                 )}
-                                
-                                {/* Fallback View */}
-                                {(hfStatus === 'error' || hfStatus !== 'success') && pages.map((page, idx) => (
-                                    <div key={page.id} className="mb-8">
-                                        <div 
-                                            className="bg-white shadow-xl border border-[#d1d1d1] outline-none"
-                                            style={{
-                                                width: '816px',
-                                                height: '1056px',
-                                                padding: '96px 96px',
-                                                fontFamily: currentFont + ', "Segoe UI", Calibri, sans-serif',
-                                                fontSize: currentSize + 'pt',
-                                                lineHeight: '1.5',
-                                                color: '#323130',
-                                                boxSizing: 'border-box',
-                                                overflow: 'hidden',
-                                                cursor: 'default',
-                                            }}
-                                            dangerouslySetInnerHTML={{ __html: page.content }}
-                                        />
+                                {activeTab === 'View' && (
+                                    <div className="flex px-2 py-0.5 h-full">
+                                        <GroupContainer label="Zoom">
+                                            <ToolbarButton icon={ZoomOut} label="Zoom Out" onClick={() => setZoom(Math.max(50, zoom - 10))} showLabel />
+                                            <div className="flex flex-col items-center justify-center min-w-[50px]">
+                                                <span className="text-xs font-bold text-[#333]">{zoom}%</span>
+                                                <span className="text-[9px] text-[#888]">Scale</span>
+                                            </div>
+                                            <ToolbarButton icon={ZoomIn} label="Zoom In" onClick={() => setZoom(Math.min(200, zoom + 10))} showLabel />
+                                        </GroupContainer>
                                     </div>
-                                ))}
+                                )}
                             </div>
-                        ) : null}
+                        )}
                     </div>
+                )}
 
-                    {/* Premium Footer */}
-                    <div className="h-12 border-t border-slate-200 flex items-center justify-between px-6 bg-slate-50">
-                        <div className="flex items-center gap-4 text-[11px] text-slate-500 font-medium">
-                            <span className="flex items-center gap-1.5"><Shield className="w-3 h-3 text-emerald-500" /> Cloud Sync Secure</span>
-                            <span className="hidden md:inline font-bold text-slate-400">V5.8-STABLE</span>
-                            <span className="hidden md:inline">• Optimized View</span>
+                {/* Content Area */}
+                <div className="flex-1 overflow-auto bg-[#f3f2f1] p-6 flex flex-col items-center relative scroll-smooth thin-scrollbar shadow-inner">
+                    {loading ? (
+                        <div className="flex flex-col items-center justify-center text-slate-500 gap-4 mt-20">
+                            <Loader2 className="w-12 h-12 animate-spin text-[#185abd]" />
+                            <p className="font-medium">Opening document...</p>
                         </div>
+                    ) : (
+                        <div className="w-full flex flex-col items-center">
+                            {/* High-Fidelity Preview (Reading Only) */}
+                            {readOnlyMode && hfStatus !== 'error' && (
+                                <div id="high-fidelity-view" className="bg-white shadow-[0_10px_40px_rgba(0,0,0,0.1)] rounded-sm mb-8" style={{ width: '816px', minHeight: '1056px' }}></div>
+                            )}
+
+                            {/* Main Editable/Fallback Content */}
+                            {(!readOnlyMode || hfStatus === 'error') && pages.map((page, idx) => (
+                                <div key={page.id} className="relative mb-8 flex flex-col items-center">
+                                    <div 
+                                        ref={el => editorRefs.current[idx] = el}
+                                        contentEditable={!readOnlyMode}
+                                        suppressContentEditableWarning={true}
+                                        onInput={(e) => {
+                                            const newPages = [...pages];
+                                            newPages[idx].content = e.currentTarget.innerHTML;
+                                            setPages(newPages);
+                                        }}
+                                        onFocus={() => setFocusedPageIdx(idx)}
+                                        onClick={handleEditorClick}
+                                        className={`bg-white shadow-[0_10px_40px_rgba(0,0,0,0.1)] outline-none ${readOnlyMode ? 'cursor-default' : 'cursor-text'}`}
+                                        style={{
+                                            width: '816px',
+                                            minHeight: '1056px',
+                                            padding: '96px 96px',
+                                            fontFamily: currentFont + ', "Segoe UI", Calibri, sans-serif',
+                                            fontSize: currentSize + 'pt',
+                                            lineHeight: '1.5',
+                                            color: '#323130',
+                                            boxSizing: 'border-box',
+                                            overflow: 'hidden',
+                                            zoom: zoom / 100,
+                                        }}
+                                        dangerouslySetInnerHTML={{ __html: page.content }}
+                                    />
+                                    <div className="mt-2 text-[10px] text-slate-400 font-bold uppercase tracking-wider">Page {idx+1} of {pages.length}</div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+
+                {/* Premium Footer */}
+                <div className="h-12 border-t border-slate-200 flex items-center justify-between px-6 bg-slate-50">
+                    <div className="flex items-center gap-4 text-[11px] text-slate-500 font-medium">
+                        <span className="flex items-center gap-1.5"><Shield className="w-3 h-3 text-emerald-500" /> Cloud Sync Secure</span>
+                        <span className="hidden md:inline font-bold text-slate-400">V5.9-UNIFIED</span>
+                        <span className="hidden md:inline">• Premium High-Fidelity Enabled</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        {!readOnlyMode && (
+                            <span className="text-[10px] text-slate-400 italic hidden sm:block">Changes will be saved to version history</span>
+                        )}
                         <button 
                             onClick={() => {
                                 const link = document.createElement('a');
@@ -901,19 +970,13 @@ const MSWordOnline = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
                             }}
                             className="flex items-center gap-2 px-3 py-1.5 bg-primary-600 hover:bg-primary-700 text-white text-xs font-bold rounded-lg transition-all"
                         >
-                            <Download className="w-3.5 h-3.5" /> Download
+                            <Download className="w-3.5 h-3.5" /> Download Original
                         </button>
                     </div>
                 </div>
             </div>
-        );
-    }
-
-    return (
-        <div className="fixed inset-0 z-[200] bg-[#f3f3f3] flex flex-col" onClick={() => { setShowFontPicker(false); setShowSizePicker(false); setShowColorPicker(false); setShowHighlightPicker(false); }}>
-            
-            {/* ===== Header ===== */}
-            <div className="h-10 bg-[#2b579a] flex items-center justify-between px-3 shadow-md border-b border-[#214376] relative z-[210]">
+        </div>
+    );
                 <div className="flex items-center gap-2 overflow-hidden">
                     <button className="p-1 hover:bg-white/10 rounded-sm transition-colors">
                         <div className="grid grid-cols-3 gap-0.5">
