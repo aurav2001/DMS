@@ -47,11 +47,20 @@ const ExcelEditor = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
             }
         } catch (err) {
             console.error('Excel Load Error:', err);
-            const msg = err.message.includes('Invalid format') 
-                ? 'Error: This file is not a valid Excel document (.xlsx)' 
-                : 'Failed to load spreadsheet';
-            toast.error(msg, { duration: 5000 });
-            onClose();
+            // RECOVERY JUGAD: If high-fidelity read fails, try a 'raw' read
+            try {
+                const wb = XLSX.read(res.data, { type: 'array', raw: true, cellStyles: false });
+                setWorkbook(wb);
+                setSheets(wb.SheetNames);
+                if (wb.SheetNames.length > 0) switchSheet(wb.SheetNames[0], wb);
+                toast.success('Loaded in recovery mode', { icon: '🛡️' });
+            } catch (recoveryErr) {
+                const msg = err.message.includes('Invalid format') 
+                    ? 'Error: This file is not a valid Excel document (.xlsx)' 
+                    : 'Failed to load spreadsheet. It might be too large or corrupted.';
+                toast.error(msg, { duration: 5000 });
+                onClose();
+            }
         } finally {
             setLoading(false);
         }

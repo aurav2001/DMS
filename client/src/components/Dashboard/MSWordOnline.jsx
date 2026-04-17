@@ -158,20 +158,32 @@ const MSWordOnline = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
                 }
 
                 document.body.removeChild(tempDiv);
-                if (paginatedPages.length === 0) paginatedPages.push({ id: 1, content: '' });
+                if (paginatedPages.length === 0) paginatedPages.push({ id: 1, content: result.value || '<p>No content found.</p>' });
                 
                 setPages(paginatedPages);
+            } else if (docInfo.isPdf) {
+                // PDF Logic is already handled above
             } else {
-                toast.error('Format not supported for browser editing yet');
-                onClose();
+                throw new Error("This file type is not supported for browser viewing. Try downloading instead.");
             }
         } catch (err) {
             console.error('Editor Load Error:', err);
-            const msg = err.message.includes('ZIP header') 
-                ? 'Error: File is not a valid .docx (it might be an old .doc or corrupted)' 
-                : 'Failed to load document for editing';
-            toast.error(msg, { duration: 5000 });
-            onClose();
+            // THE RECOVERY JUGAD: If complex parsing fails, try to show the raw HTML at least
+            try {
+                if (doc.fileType?.includes('word') || doc.fileName?.endsWith('.docx')) {
+                    const result = await mammoth.convertToHtml({ arrayBuffer: res.data }, { ignoreEmptyParagraphs: true });
+                    setPages([{ id: 'recovery-page', content: result.value || 'Content could not be parsed.' }]);
+                } else {
+                    throw err;
+                }
+            } catch (recoveryErr) {
+                const msg = err.message.includes('ZIP header') 
+                    ? 'Error: File is not a valid .docx (it might be an old .doc or corrupted)' 
+                    : 'Failed to load document for editing. Switching to safe view...';
+                toast.error(msg, { duration: 5000 });
+                // One last try: just close if everything fails
+                if (!pages[0].content) onClose();
+            }
         } finally {
             setLoading(false);
         }
