@@ -376,8 +376,8 @@ const unshareDocument = async (req, res) => {
 const viewDocument = async (req, res) => {
     try {
         const document = await Document.findById(req.params.id);
-        if (!document || !document.fileData) {
-            return res.status(404).json({ message: 'File not found' });
+        if (!document) {
+            return res.status(404).json({ message: 'Document not found' });
         }
         
         const isOwner = document.uploadedBy.toString() === req.user.id.toString();
@@ -587,22 +587,62 @@ const openInDesktop = async (req, res) => {
         const document = await Document.findById(req.params.id);
         if (!document) return res.status(404).json({ message: 'Document not found' });
 
-        if (document.storageType !== 'local') {
-            return res.status(400).json({ message: 'Direct desktop editing is only available for local OneDrive storage' });
+        // Protocol URI mapping
+        const protocolMap = {
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'ms-word',
+            'application/msword': 'ms-word',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'ms-excel',
+            'application/vnd.ms-excel': 'ms-excel',
+            'text/csv': 'ms-excel',
+            'application/csv': 'ms-excel',
+            'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'ms-powerpoint',
+            'application/vnd.ms-powerpoint': 'ms-powerpoint',
+            'text/plain': 'ms-word'
+        };
+
+        const protocol = protocolMap[document.fileType];
+        
+        // If it's a local development environment and storage is local, we can still try 'start'
+        if (process.env.NODE_ENV !== 'production' && document.storageType === 'local') {
+            const storageDir = process.env.LOCAL_STORAGE_PATH || path.join(__dirname, '../uploads');
+            const filePath = path.join(storageDir, document.storagePath);
+
+            if (fs.existsSync(filePath)) {
+                console.log(`Launching Desktop App for: ${filePath}`);
+                require('child_process').exec(`start "" "${filePath}"`);
+                return res.json({ message: 'Opening in Desktop Application...', mode: 'local' });
+            }
         }
 
-        const storageDir = process.env.LOCAL_STORAGE_PATH || path.join(__dirname, '../uploads');
-        const filePath = path.join(storageDir, document.storagePath);
-
-        if (!fs.existsSync(filePath)) {
-            return res.status(404).json({ message: 'File not found on disk' });
+        // Production / Universal Fallback: Use Protocol URI
+        if (!protocol) {
+            return res.status(400).json({ message: 'Desktop editing is only available for Office documents (Word, Excel, PowerPoint).' });
         }
 
-        console.log(`Launching Desktop App for: ${filePath}`);
-        // Windows command to open file with default application
-        require('child_process').exec(`start "" "${filePath}"`);
+        // Construct the full URL for the document
+        const host = req.get('host');
+        const protocolPrefix = req.protocol;
+        const token = req.header('x-auth-token') || req.query.token;
+        
+        // Define a mapping for extensions
+        const extMap = {
+            'ms-word': document.fileName.endsWith('.doc') ? 'file.doc' : 'file.docx',
+            'ms-excel': document.fileName.endsWith('.csv') ? 'file.csv' : (document.fileName.endsWith('.xls') ? 'file.xls' : 'file.xlsx'),
+            'ms-powerpoint': document.fileName.endsWith('.ppt') ? 'file.ppt' : 'file.pptx'
+        };
+        const extension = extMap[protocol] || 'file.docx';
 
-        res.json({ message: 'Opening in Desktop Application...' });
+        // URL format: /api/documents/download/:id/:extension?token=...
+        const fileUrl = `${protocolPrefix}://${host}/api/documents/download/${document._id}/${extension}?token=${token}`;
+        
+        // Final Office URI: protocol:ofe|u|url
+        const officeUri = `${protocol}:ofe|u|${fileUrl}`;
+
+        res.json({ 
+            message: 'Redirecting to Desktop Application...', 
+            mode: 'protocol',
+            uri: officeUri 
+        });
     } catch (err) {
         console.error('Open Desktop Error:', err);
         res.status(500).json({ message: err.message });

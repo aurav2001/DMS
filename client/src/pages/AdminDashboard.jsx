@@ -6,9 +6,15 @@ import axios from 'axios';
 import { 
   Users, FileText, HardDrive, Shield, Trash2, Eye, EyeOff, 
   Download, Edit3, Camera, CameraOff, Lock, Unlock, ChevronDown,
-  BarChart3, ArrowLeft, Search, AlertTriangle, X, UserPlus
+  BarChart3, ArrowLeft, Search, AlertTriangle, X, UserPlus, Loader2
 } from 'lucide-react';
 import AddUserModal from '../components/Admin/AddUserModal';
+
+import MSWordOnline from '../components/Dashboard/MSWordOnline';
+import ExcelEditor from '../components/Dashboard/SpreadsheetEngine';
+import PPTEditor from '../components/Dashboard/PresentationEngine';
+import OfficeViewer from '../components/Dashboard/OfficeViewer';
+import { getDocType } from '../utils/fileUtils';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -24,6 +30,12 @@ const AdminDashboard = () => {
   const [sharingModal, setSharingModal] = useState({ isOpen: false, user: null });
   const [userSearch, setUserSearch] = useState('');
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
+  
+  // Viewer States
+  const [viewState, setViewState] = useState({ isOpen: false, url: null, doc: null });
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [activeEditorDoc, setActiveEditorDoc] = useState(null);
+  const [readOnlyMode, setReadOnlyMode] = useState(true);
 
   useEffect(() => {
     if (!user || user.role !== 'Admin') {
@@ -84,6 +96,38 @@ const AdminDashboard = () => {
     const sizes = ['B', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  };
+
+  const handleSecureAction = async (doc, action) => {
+    try {
+      const endpoint = action === 'view' ? 'view' : 'download';
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API_BASE}/documents/${endpoint}/${doc._id}`, {
+        responseType: 'blob',
+        headers: { 'x-auth-token': token }
+      });
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: response.headers['content-type'] }));
+      
+      if (action === 'download') {
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', doc.fileName || doc.title);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+      } else {
+        setViewState({ isOpen: true, url, doc });
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Failed to access document content');
+    }
+  };
+
+  const openInEditor = (doc) => {
+    setActiveEditorDoc(doc);
+    setIsEditorOpen(true);
+    setReadOnlyMode(true);
   };
 
   const filteredUsers = users.filter(u => 
@@ -333,15 +377,27 @@ const AdminDashboard = () => {
             {activeTab === 'documents' && (
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
                 <div className="space-y-4">
-                  {filteredDocs.map(doc => (
-                    <DocumentPermissionCard 
-                      key={doc._id} 
-                      doc={doc} 
-                      users={users}
-                      onUpdate={updatePermissions}
-                      formatBytes={formatBytes}
-                    />
-                  ))}
+                    {filteredDocs.map(doc => (
+                      <DocumentPermissionCard 
+                        key={doc._id} 
+                        doc={doc} 
+                        users={users}
+                        onUpdate={updatePermissions}
+                        onView={() => {
+                          const docInfo = getDocType(doc.fileType, doc.fileName, doc.title);
+                          const isCloudOffice = (docInfo.isWord || docInfo.isExcel || docInfo.isPPT) && doc.fileUrl?.startsWith('http');
+                          
+                          if (isCloudOffice) {
+                            setViewState({ isOpen: true, url: null, doc });
+                          } else if (docInfo.isWord || docInfo.isExcel || docInfo.isPPT) {
+                            openInEditor(doc);
+                          } else {
+                            handleSecureAction(doc, 'view');
+                          }
+                        }}
+                        formatBytes={formatBytes}
+                      />
+                    ))}
                   {filteredDocs.length === 0 && (
                     <div className="text-center py-12 text-slate-500 bg-white/5 rounded-2xl">No documents found</div>
                   )}
@@ -426,12 +482,70 @@ const AdminDashboard = () => {
           </>
         )}
       </div>
+
+      {/* Full Document Editor Modal */}
+      <AnimatePresence>
+        {isEditorOpen && activeEditorDoc && (
+          <React.Suspense fallback={
+            <div className="fixed inset-0 z-[200] bg-slate-900/50 flex items-center justify-center">
+              <Loader2 className="w-12 h-12 text-indigo-500 animate-spin" />
+            </div>
+          }>
+            {(() => {
+              const info = getDocType(activeEditorDoc.fileType, activeEditorDoc.fileName, activeEditorDoc.title);
+              if (info.isExcel) return <ExcelEditor doc={activeEditorDoc} onClose={() => setIsEditorOpen(false)} onRefresh={fetchData} readOnlyMode={readOnlyMode} />;
+              if (info.isPPT) return <PPTEditor doc={activeEditorDoc} onClose={() => setIsEditorOpen(false)} onRefresh={fetchData} readOnlyMode={readOnlyMode} />;
+              return <MSWordOnline doc={activeEditorDoc} onClose={() => setIsEditorOpen(false)} onRefresh={fetchData} readOnlyMode={readOnlyMode} />;
+            })()}
+          </React.Suspense>
+        )}
+      </AnimatePresence>
+
+      {/* Secure Viewer Modal */}
+      <AnimatePresence>
+        {viewState.isOpen && viewState.doc && (
+            (() => {
+                const info = getDocType(viewState.doc.fileType, viewState.doc.fileName, viewState.doc.title);
+                if ((info.isWord || info.isExcel || info.isPPT) && viewState.doc.fileUrl?.startsWith('http')) {
+                    return <OfficeViewer doc={viewState.doc} onClose={() => setViewState({ isOpen: false, url: null, doc: null })} />;
+                }
+                return (
+                    <motion.div 
+                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[200] bg-slate-900/95 backdrop-blur-xl flex items-center justify-center p-4"
+                        onContextMenu={(e) => e.preventDefault()}
+                    >
+                        <button 
+                        onClick={() => setViewState({ isOpen: false, url: null, doc: null })} 
+                        className="absolute top-6 right-6 p-3 bg-white/10 hover:bg-red-500 text-white rounded-full transition-all z-[210] shadow-xl"
+                        >
+                        <X className="w-6 h-6" />
+                        </button>
+                        <div className="relative w-full max-w-6xl h-[90vh] bg-white rounded-3xl overflow-hidden shadow-2xl">
+                        <iframe 
+                            src={`${viewState.url}#toolbar=0`} 
+                            className="w-full h-full border-0" 
+                            title="Secure Viewer" 
+                        />
+                        <div className="absolute inset-0 z-10 pointer-events-none overflow-hidden flex flex-wrap content-around justify-center opacity-[0.03]">
+                            {Array.from({length: 40}).map((_, i) => (
+                            <span key={i} className="text-3xl font-black -rotate-45 text-slate-900 mx-10 my-10 select-none uppercase">
+                                {user?.email} • ADMIN VIEW
+                            </span>
+                            ))}
+                        </div>
+                        </div>
+                    </motion.div>
+                );
+            })()
+        )}
+      </AnimatePresence>
     </div>
   );
 };
 
 // Document Permission Card Component
-const DocumentPermissionCard = ({ doc, onUpdate, formatBytes, users }) => {
+const DocumentPermissionCard = ({ doc, onUpdate, formatBytes, users, onView }) => {
   const [expanded, setExpanded] = useState(false);
   const [shareSearch, setShareSearch] = useState('');
   const [showUserList, setShowUserList] = useState(false);
@@ -482,6 +596,14 @@ const DocumentPermissionCard = ({ doc, onUpdate, formatBytes, users }) => {
           </div>
         </div>
         <div className="flex items-center gap-3">
+          <button 
+            onClick={(e) => { e.stopPropagation(); onView(); }}
+            className="p-2 hover:bg-white/10 rounded-lg text-indigo-400 transition flex items-center gap-2 border border-indigo-500/20"
+            title="View content"
+          >
+            <Eye className="w-4 h-4" />
+            <span className="text-[10px] font-bold">VIEW</span>
+          </button>
           <span className={`text-xs px-3 py-1 rounded-full ${
             access === 'public' ? 'bg-green-500/20 text-green-400' : 
             access === 'restricted' ? 'bg-orange-500/20 text-orange-400' : 'bg-slate-500/20 text-slate-400'

@@ -9,6 +9,7 @@ const User = require('./models/User');
 dotenv.config();
 
 const app = express();
+app.set('trust proxy', 1); // Trust first proxy for correct protocol detection on Vercel
 
 // Middleware
 app.use(cors({

@@ -20,6 +20,7 @@ const router = express.Router();
 router.post('/upload', auth, upload.single('file'), uploadDocument);
 router.get('/', auth, getDocuments);
 router.get('/download/:id', auth, downloadDocument);
+router.get('/download/:id/:dummy', auth, downloadDocument); // Handle dummy extensions for Office apps
 router.get('/view/:id', auth, viewDocument);
 router.delete('/:id', auth, deleteDocument);
 router.patch('/:id/star', auth, toggleStar);
