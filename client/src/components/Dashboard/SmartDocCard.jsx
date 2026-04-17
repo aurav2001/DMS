@@ -137,6 +137,20 @@ const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
       toast.error('Action failed. Denied.');
     }
   };
+  
+  const handleMainView = (e) => {
+    if (e) e.stopPropagation();
+    const isOffice = isWord || isExcel || isPPT;
+    // If it's an Office file and has a URL, prioritize Microsoft/Google Cloud View
+    if (isOffice && doc.fileUrl) {
+      setViewState({ isOpen: true, url: null, doc });
+    } else if (isOffice) {
+      // Fallback to internal premium editor if no public URL
+      handleOpenEditor(true);
+    } else {
+      handleSecureAction('view');
+    }
+  };
 
   const handleOpenDesktop = async (e) => {
     if (e) e.stopPropagation();
@@ -184,18 +198,7 @@ const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             {canView && (
               <button 
-                onClick={() => {
-                  const isOffice = isWord || isExcel || isPPT;
-                  // If it's an Office file and has a URL, prioritize Microsoft/Google Cloud View
-                  if (isOffice && doc.fileUrl) {
-                    setViewState({ isOpen: true, url: null, doc });
-                  } else if (isOffice) {
-                    // Fallback to internal premium editor if no public URL
-                    handleOpenEditor(true);
-                  } else {
-                    handleSecureAction('view');
-                  }
-                }} 
+                onClick={handleMainView} 
                 className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500 hover:text-indigo-500 transition-all" 
                 title="View"
               >
@@ -258,24 +261,14 @@ const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
           <div className="flex flex-wrap gap-1.5 mt-2">
             {canView && (
               <button 
-                onClick={(e) => { 
-                  e.stopPropagation(); 
-                  const isCloudOffice = (isWord || isExcel || isPPT) && doc.fileUrl?.startsWith('http');
-                  if (isCloudOffice) {
-                    setViewState({ isOpen: true, url: null, doc });
-                  } else if (isWord || isExcel || isPPT) {
-                    handleOpenEditor(true);
-                  } else {
-                    handleSecureAction('view');
-                  }
-                }}
+                onClick={handleMainView}
                 className={`cursor-pointer hover:scale-105 transition-all text-[9px] px-2 py-0.5 rounded-md font-bold flex items-center gap-1 border ${
                   doc.fileUrl?.startsWith('http') 
                   ? "bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 border-indigo-100 dark:border-indigo-800/50" 
                   : "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border-blue-100 dark:border-blue-800/50"
                 }`}
               >
-                <Eye className="w-2.5 h-2.5" /> {doc.fileUrl?.startsWith('http') ? 'VIEW (OFFICE)' : 'READ (LOCAL)'}
+                <Eye className="w-2.5 h-2.5" /> {(isWord || isExcel || isPPT) && doc.fileUrl ? 'VIEW (EXTERNAL)' : 'READ (LOCAL)'}
               </button>
             )}
             {canDownload && (
