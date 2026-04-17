@@ -3,7 +3,8 @@ import { X, Save, FileText, Loader2, Type, Undo2, Redo2, Bold, Italic, Underline
   AlignLeft, AlignCenter, AlignRight, AlignJustify, List, ListOrdered, 
   Link2, Image, Table, Minus, Plus, ChevronDown, Palette, Highlighter, 
   Strikethrough, Subscript, Superscript, IndentIncrease, IndentDecrease,
-  Printer, ZoomIn, ZoomOut, FileDown, Copy, Scissors, Clipboard, Share2, Check, Trash, Monitor, ExternalLink
+  Printer, ZoomIn, ZoomOut, FileDown, Copy, Scissors, Clipboard, Share2, Check, Trash, Monitor, ExternalLink,
+  Eye, Lock // 👈 Added for read-only indicator
 } from 'lucide-react';
 import mammoth from 'mammoth';
 import { PDFDocument, rgb } from 'pdf-lib';
@@ -55,6 +56,26 @@ const MSWordOnline = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
         loadDocument();
     }, [doc]);
 
+    // ✅ FIX: Block all keyboard input when readOnlyMode is true
+    useEffect(() => {
+        if (!readOnlyMode) return;
+
+        const blockInput = (e) => {
+            // Allow navigation keys, copy, select-all — block everything else
+            const allowedKeys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'PageUp', 'PageDown', 'Home', 'End'];
+            const isCopy = (e.ctrlKey || e.metaKey) && e.key === 'c';
+            const isSelectAll = (e.ctrlKey || e.metaKey) && e.key === 'a';
+            
+            if (!allowedKeys.includes(e.key) && !isCopy && !isSelectAll) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        };
+
+        document.addEventListener('keydown', blockInput, true);
+        return () => document.removeEventListener('keydown', blockInput, true);
+    }, [readOnlyMode]);
+
     const openInDesktop = async () => {
         try {
             const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
@@ -66,7 +87,6 @@ const MSWordOnline = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
             
             if (res.data.mode === 'protocol' && res.data.uri) {
                 toast.success('Triggering Desktop Application...', { icon: '🚀' });
-                // Use a small delay to ensure toast is visible
                 setTimeout(() => {
                     window.location.href = res.data.uri;
                 }, 1000);
@@ -101,7 +121,6 @@ const MSWordOnline = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
             } else if (docInfo.isWord) {
                 setMode('word');
                 
-                // Validate if it's a valid ZIP-based file (DOCX/XLSX/PPTX start with PK)
                 const bytes = new Uint8Array(res.data);
                 if (bytes[0] !== 0x50 || bytes[1] !== 0x4B) {
                     throw new Error("Invalid file format: This file does not appear to be a valid .docx document (missing ZIP header).");
@@ -124,7 +143,6 @@ const MSWordOnline = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
 
                 const result = await mammoth.convertToHtml({ arrayBuffer: res.data }, mammothOptions);
                 
-                // --- Automatic Pagination Logic ---
                 const tempDiv = document.createElement('div');
                 tempDiv.style.width = '816px';
                 tempDiv.style.padding = '96px 72px';
@@ -161,14 +179,11 @@ const MSWordOnline = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
                 if (paginatedPages.length === 0) paginatedPages.push({ id: 1, content: result.value || '<p>No content found.</p>' });
                 
                 setPages(paginatedPages);
-            } else if (docInfo.isPdf) {
-                // PDF Logic is already handled above
             } else {
                 throw new Error("This file type is not supported for browser viewing. Try downloading instead.");
             }
         } catch (err) {
             console.error('Editor Load Error:', err);
-            // THE RECOVERY JUGAD: If complex parsing fails, try to show the raw HTML at least
             try {
                 if (doc.fileType?.includes('word') || doc.fileName?.endsWith('.docx')) {
                     const result = await mammoth.convertToHtml({ arrayBuffer: res.data }, { ignoreEmptyParagraphs: true });
@@ -181,7 +196,6 @@ const MSWordOnline = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
                     ? 'Error: File is not a valid .docx (it might be an old .doc or corrupted)' 
                     : 'Failed to load document for editing. Switching to safe view...';
                 toast.error(msg, { duration: 5000 });
-                // One last try: just close if everything fails
                 if (!pages[0].content) onClose();
             }
         } finally {
@@ -190,6 +204,9 @@ const MSWordOnline = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
     };
 
     const execCommand = (command, value = null) => {
+        // ✅ FIX: Block execCommand in read-only mode
+        if (readOnlyMode) return;
+
         if (selectionRef.current) {
             const selection = window.getSelection();
             selection.removeAllRanges();
@@ -199,18 +216,22 @@ const MSWordOnline = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
         document.execCommand('styleWithCSS', false, false);
         document.execCommand(command, false, value);
         
-        // Refocus active page
         const activePage = editorRefs.current[focusedPageIdx];
         activePage?.focus();
         saveSelection();
     };
 
     const handlePageInput = (idx, e) => {
+        // ✅ FIX: Block any input changes in read-only mode
+        if (readOnlyMode) {
+            e.preventDefault();
+            return;
+        }
+
         const el = e.currentTarget;
         const newPages = [...pages];
         newPages[idx].content = el.innerHTML;
         
-        // Only trigger heavy pagination if we've actually grown
         if (el.scrollHeight > 1056) {
             const lastChild = el.lastElementChild;
             if (lastChild) {
@@ -229,24 +250,31 @@ const MSWordOnline = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
     };
 
     const handleKeyDown = (e, idx) => {
+        // ✅ FIX: In read-only mode, only allow navigation & copy keys
+        if (readOnlyMode) {
+            const allowedKeys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'PageUp', 'PageDown', 'Home', 'End'];
+            const isCopy = (e.ctrlKey || e.metaKey) && e.key === 'c';
+            const isSelectAll = (e.ctrlKey || e.metaKey) && e.key === 'a';
+            if (!allowedKeys.includes(e.key) && !isCopy && !isSelectAll) {
+                e.preventDefault();
+            }
+            return;
+        }
+
         if (e.key === 'Tab') {
             e.preventDefault();
-            // Insert 4 non-breaking spaces as a tab
             document.execCommand('insertHTML', false, '&nbsp;&nbsp;&nbsp;&nbsp;');
         }
         
-        // Deletion handling for page transitions
         if (e.key === 'Backspace') {
             const selection = window.getSelection();
             if (selection.rangeCount > 0) {
                 const range = selection.getRangeAt(0);
-                // If at the very start of a page (not first page), jump back
                 if (range.startOffset === 0 && range.endOffset === 0 && idx > 0) {
                     const prevPage = editorRefs.current[idx - 1];
                     if (prevPage) {
                         e.preventDefault();
                         prevPage.focus();
-                        // Move cursor to end of previous page
                         const newRange = document.createRange();
                         newRange.selectNodeContents(prevPage);
                         newRange.collapse(false);
@@ -268,6 +296,7 @@ const MSWordOnline = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
     };
 
     const handleImageUpload = (e) => {
+        if (readOnlyMode) return; // ✅ FIX: Block image upload in read-only
         const file = e.target.files[0];
         if (file) {
             const reader = new FileReader();
@@ -280,7 +309,7 @@ const MSWordOnline = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
     };
 
     const setImgAlignment = (align) => {
-        if (!selectedImg) return;
+        if (readOnlyMode || !selectedImg) return; // ✅ FIX
         if (align === 'left') {
             selectedImg.style.float = 'left';
             selectedImg.style.margin = '0 15px 15px 0';
@@ -315,6 +344,7 @@ const MSWordOnline = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
     };
 
     const handleImgResize = (e, direction) => {
+        if (readOnlyMode) return; // ✅ FIX: Block resize in read-only
         e.preventDefault();
         const startX = e.clientX;
         const startWidth = selectedImg.clientWidth;
@@ -340,9 +370,14 @@ const MSWordOnline = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
 
     const handleEditorClick = (e) => {
         const activePage = editorRefs.current[focusedPageIdx];
-        // Handle Images
+
+        // ✅ FIX: In read-only mode, don't show edit overlays for table/image
+        if (readOnlyMode) {
+            saveSelection();
+            return;
+        }
+
         if (e.target.tagName === 'IMG') {
-            // Remove previous selection highlight
             const prevSelected = activePage.querySelector('[data-selected="true"]');
             if (prevSelected) {
                 prevSelected.removeAttribute('data-selected');
@@ -371,14 +406,12 @@ const MSWordOnline = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
             return;
         } 
         
-        // Remove selection highlight if clicking elsewhere
         const selected = activePage?.querySelector('[data-selected="true"]');
         if (selected) {
             selected.removeAttribute('data-selected');
             selected.style.outline = 'none';
         }
         
-        // Handle Tables
         const cell = e.target.closest('td, th');
         if (cell) {
             setSelectedCell(cell);
@@ -405,7 +438,7 @@ const MSWordOnline = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
     };
 
     const handleTableAction = (action) => {
-        if (!selectedCell) return;
+        if (readOnlyMode || !selectedCell) return; // ✅ FIX
         const row = selectedCell.parentElement;
         const table = row.closest('table');
         const rowIndex = row.rowIndex;
@@ -430,32 +463,25 @@ const MSWordOnline = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
                 }
                 break;
             case 'deleteRow':
-                if (table.rows.length > 1) {
-                    table.deleteRow(rowIndex);
-                } else {
-                    table.remove();
-                }
+                if (table.rows.length > 1) table.deleteRow(rowIndex);
+                else table.remove();
                 break;
             case 'deleteCol':
                 if (row.cells.length > 1) {
-                    for (let i = 0; i < table.rows.length; i++) {
-                        table.rows[i].deleteCell(cellIndex);
-                    }
-                } else {
-                    table.remove();
-                }
+                    for (let i = 0; i < table.rows.length; i++) table.rows[i].deleteCell(cellIndex);
+                } else table.remove();
                 break;
             case 'deleteTable':
                 table.remove();
                 break;
-            default:
-                break;
+            default: break;
         }
         setTableSettings({ visible: false, rect: null });
         setSelectedCell(null);
     };
 
     const insertTable = (rows, cols) => {
+        if (readOnlyMode) return; // ✅ FIX
         let tableHtml = `<table border="1" style="border-collapse: collapse; width: 100%; border: 1px solid #dee2e6; margin: 10px 0;"><tbody>`;
         for (let i = 0; i < rows; i++) {
             tableHtml += '<tr>';
@@ -470,6 +496,7 @@ const MSWordOnline = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
     };
 
     const handleSave = async () => {
+        if (readOnlyMode) return; // ✅ FIX: Can't save in read-only
         try {
             setSaving(true);
             const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
@@ -533,7 +560,6 @@ const MSWordOnline = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
 
     const renderHomeTab = () => (
         <div className="flex items-center gap-0 px-2 py-0.5 flex-wrap h-full">
-            {/* Clipboard Group */}
             <GroupContainer label="Clipboard">
                 <ToolbarButton icon={Clipboard} label="Paste" onClick={() => execCommand('paste')} showLabel />
                 <div className="flex flex-col">
@@ -542,7 +568,6 @@ const MSWordOnline = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
                 </div>
             </GroupContainer>
 
-            {/* Font Group */}
             <GroupContainer label="Font">
                 <div className="flex flex-col gap-1">
                     <div className="flex items-center gap-1">
@@ -622,7 +647,6 @@ const MSWordOnline = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
                 </div>
             </GroupContainer>
 
-            {/* Paragraph Group */}
             <GroupContainer label="Paragraph">
                 <div className="flex flex-col gap-1">
                     <div className="flex items-center gap-0.5">
@@ -640,7 +664,6 @@ const MSWordOnline = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
                 </div>
             </GroupContainer>
 
-            {/* Styles Group */}
             <GroupContainer label="Styles">
                 <div className="flex items-center gap-1">
                     <button onMouseDown={(e) => e.preventDefault()} onClick={() => execCommand('formatBlock', 'p')} className="flex flex-col items-center justify-center border border-[#d1d1d1] bg-white rounded p-1 w-12 h-12 hover:border-[#0078d4]">
@@ -659,7 +682,6 @@ const MSWordOnline = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
                 </div>
             </GroupContainer>
 
-            {/* Undo/Redo Group */}
             <GroupContainer label="Editing">
                 <ToolbarButton icon={Undo2} label="Undo" onClick={() => execCommand('undo')} showLabel />
                 <ToolbarButton icon={Redo2} label="Redo" onClick={() => execCommand('redo')} showLabel />
@@ -683,14 +705,7 @@ const MSWordOnline = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
                                 <span className="text-[10px] font-semibold text-[#333]">Insert Table</span>
                                 <span className="text-[10px] text-blue-600">{tablePicker.rows}x{tablePicker.cols}</span>
                             </div>
-                            <div 
-                                style={{ 
-                                    display: 'grid', 
-                                    gridTemplateColumns: 'repeat(10, 1fr)', 
-                                    gap: '4px',
-                                    marginBottom: '8px'
-                                }}
-                            >
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, 1fr)', gap: '4px', marginBottom: '8px' }}>
                                 {Array.from({ length: 100 }).map((_, i) => {
                                     const r = Math.floor(i / 10) + 1;
                                     const c = (i % 10) + 1;
@@ -698,13 +713,7 @@ const MSWordOnline = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
                                     return (
                                         <div 
                                             key={i}
-                                            style={{
-                                                width: '18px',
-                                                height: '18px',
-                                                border: '1px solid',
-                                                borderColor: isSelected ? '#0078d4' : '#dee2e6',
-                                                backgroundColor: isSelected ? '#deecf9' : '#f8f9fa'
-                                            }}
+                                            style={{ width: '18px', height: '18px', border: '1px solid', borderColor: isSelected ? '#0078d4' : '#dee2e6', backgroundColor: isSelected ? '#deecf9' : '#f8f9fa' }}
                                             className="cursor-pointer transition-colors"
                                             onMouseDown={(e) => e.preventDefault()}
                                             onMouseEnter={() => setTablePicker({ ...tablePicker, rows: r, cols: c })}
@@ -720,33 +729,17 @@ const MSWordOnline = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
                             >
                                 {tablePicker.custom ? 'Hide Custom' : 'Custom Table...'}
                             </button>
-                            
                             {tablePicker.custom && (
                                 <div className="mt-2 pt-2 border-t border-[#eee] flex items-center gap-2">
                                     <div className="flex-1">
                                         <p className="text-[8px] text-gray-500 mb-0.5 uppercase">Rows</p>
-                                        <input 
-                                            type="number" 
-                                            value={customTable.rows} 
-                                            onChange={(e) => setCustomTable({...customTable, rows: parseInt(e.target.value) || 1})}
-                                            className="w-full border border-gray-300 rounded px-1 py-0.5 text-[10px]"
-                                        />
+                                        <input type="number" value={customTable.rows} onChange={(e) => setCustomTable({...customTable, rows: parseInt(e.target.value) || 1})} className="w-full border border-gray-300 rounded px-1 py-0.5 text-[10px]" />
                                     </div>
                                     <div className="flex-1">
                                         <p className="text-[8px] text-gray-500 mb-0.5 uppercase">Cols</p>
-                                        <input 
-                                            type="number" 
-                                            value={customTable.cols} 
-                                            onChange={(e) => setCustomTable({...customTable, cols: parseInt(e.target.value) || 1})}
-                                            className="w-full border border-gray-300 rounded px-1 py-0.5 text-[10px]"
-                                        />
+                                        <input type="number" value={customTable.cols} onChange={(e) => setCustomTable({...customTable, cols: parseInt(e.target.value) || 1})} className="w-full border border-gray-300 rounded px-1 py-0.5 text-[10px]" />
                                     </div>
-                                    <button 
-                                        onClick={() => insertTable(customTable.rows, customTable.cols)}
-                                        className="h-8 px-2 bg-blue-600 text-white rounded text-[10px] self-end hover:bg-blue-700"
-                                    >
-                                        Insert
-                                    </button>
+                                    <button onClick={() => insertTable(customTable.rows, customTable.cols)} className="h-8 px-2 bg-blue-600 text-white rounded text-[10px] self-end hover:bg-blue-700">Insert</button>
                                 </div>
                             )}
                         </div>
@@ -755,19 +748,8 @@ const MSWordOnline = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
             </GroupContainer>
 
             <GroupContainer label="Illustrations">
-                <input 
-                    type="file" 
-                    ref={fileInputRef} 
-                    className="hidden" 
-                    accept="image/*" 
-                    onChange={handleImageUpload} 
-                />
-                <ToolbarButton 
-                    icon={Image} 
-                    label="Pictures" 
-                    onClick={() => fileInputRef.current?.click()} 
-                    showLabel 
-                />
+                <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageUpload} />
+                <ToolbarButton icon={Image} label="Pictures" onClick={() => fileInputRef.current?.click()} showLabel />
             </GroupContainer>
 
             <GroupContainer label="Links">
@@ -786,7 +768,7 @@ const MSWordOnline = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
     return (
         <div className="fixed inset-0 z-[200] bg-[#f3f3f3] flex flex-col" onClick={() => { setShowFontPicker(false); setShowSizePicker(false); setShowColorPicker(false); setShowHighlightPicker(false); }}>
             
-            {/* ===== Word 365 Header (Clone) ===== */}
+            {/* ===== Header ===== */}
             <div className="h-10 bg-[#2b579a] flex items-center justify-between px-3 shadow-md border-b border-[#214376] relative z-[210]">
                 <div className="flex items-center gap-2 overflow-hidden">
                     <button className="p-1 hover:bg-white/10 rounded-sm transition-colors">
@@ -796,7 +778,6 @@ const MSWordOnline = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
                     </button>
                 </div>
 
-                {/* Middle: Title & Actions */}
                 <div className="flex-1 flex items-center justify-center gap-4">
                     <div className="flex flex-col items-center">
                         <div className="flex items-center gap-2">
@@ -806,6 +787,13 @@ const MSWordOnline = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
                             <span className="bg-white/20 text-[9px] px-1 py-0.5 rounded text-white border border-white/20 uppercase font-bold tracking-tighter">
                                 {doc.fileType?.split('/')[1]?.split('-')[0] || 'DOCX'}
                             </span>
+                            {/* ✅ NEW: Read-Only Badge in header */}
+                            {readOnlyMode && (
+                                <span className="flex items-center gap-1 bg-amber-400/90 text-amber-900 text-[9px] px-2 py-0.5 rounded font-bold uppercase tracking-tight">
+                                    <Lock className="w-2.5 h-2.5" />
+                                    View Only
+                                </span>
+                            )}
                         </div>
                         <div className="flex items-center gap-1.5 text-[9px] text-blue-100/70">
                             <span className="flex items-center gap-0.5"><Check className="w-2.5 h-2.5" /> Saved to OneDrive</span>
@@ -843,6 +831,7 @@ const MSWordOnline = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
                         </button>
                     </div>
 
+                    {/* ✅ FIX: Save button completely hidden in read-only mode */}
                     {!readOnlyMode && (
                         <button 
                             onClick={handleSave}
@@ -854,16 +843,13 @@ const MSWordOnline = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
                         </button>
                     )}
 
-                    <button 
-                        onClick={onClose}
-                        className="p-1 px-3 hover:bg-red-600 text-white transition-all"
-                    >
+                    <button onClick={onClose} className="p-1 px-3 hover:bg-red-600 text-white transition-all">
                         <X className="w-4 h-4" />
                     </button>
                 </div>
             </div>
 
-            {/* ===== Ribbon Tabs (365 Look) ===== */}
+            {/* ✅ FIX: Ribbon Tabs — completely hidden in read-only mode */}
             {!readOnlyMode && (
                 <div className="bg-[#f3f2f1] border-b border-[#d1d1d1] px-4">
                     <div className="flex items-center">
@@ -888,7 +874,7 @@ const MSWordOnline = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
                 </div>
             )}
 
-            {/* ===== Ribbon Toolbar ===== */}
+            {/* ✅ FIX: Toolbar — completely hidden in read-only mode */}
             {mode === 'word' && !readOnlyMode && (
                 <div className="bg-[#f3f3f3] border-b border-[#d1d1d1] min-h-[92px] flex items-stretch" onClick={e => e.stopPropagation()}>
                     {activeTab === 'Home' && renderHomeTab()}
@@ -949,8 +935,18 @@ const MSWordOnline = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
                 </div>
             )}
 
-            {/* ===== Ruler ===== */}
-            {mode === 'word' && (
+            {/* ✅ NEW: Read-Only Info Banner */}
+            {readOnlyMode && mode === 'word' && (
+                <div className="bg-amber-50 border-b border-amber-200 px-4 py-1.5 flex items-center gap-2">
+                    <Eye className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
+                    <span className="text-[11px] text-amber-700 font-medium">
+                        You're viewing this document in <strong>read-only mode</strong>. Editing is disabled.
+                    </span>
+                </div>
+            )}
+
+            {/* ===== Ruler (only in edit mode) ===== */}
+            {mode === 'word' && !readOnlyMode && (
                 <div className="bg-white border-b border-[#e0e0e0] flex justify-center">
                     <div className="w-full max-w-[820px] h-5 relative">
                         <div className="absolute inset-0 flex items-end">
@@ -964,7 +960,7 @@ const MSWordOnline = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
                 </div>
             )}
 
-            {/* ===== Document Canvas (A4 Desk Look) ===== */}
+            {/* ===== Document Canvas ===== */}
             <div className="flex-1 overflow-auto bg-[#f3f2f1] flex flex-col items-center py-10 px-4 gap-12 relative scroll-smooth thin-scrollbar shadow-inner">
                 {loading ? (
                     <div className="flex flex-col items-center justify-center text-slate-500 gap-4 mt-20">
@@ -981,6 +977,7 @@ const MSWordOnline = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
                             >
                                 <div 
                                     ref={el => editorRefs.current[idx] = el}
+                                    // ✅ FIX: contentEditable false in read-only
                                     contentEditable={!readOnlyMode}
                                     suppressContentEditableWarning
                                     onInput={(e) => handlePageInput(idx, e)}
@@ -997,20 +994,21 @@ const MSWordOnline = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
                                         color: '#323130',
                                         boxSizing: 'border-box',
                                         overflow: 'hidden',
-                                        position: 'relative'
+                                        position: 'relative',
+                                        // ✅ FIX: Show not-allowed cursor in read-only
+                                        cursor: readOnlyMode ? 'default' : 'text',
+                                        userSelect: readOnlyMode ? 'text' : 'auto', // Allow text selection for copy
                                     }}
                                     dangerouslySetInnerHTML={{ __html: page.content }}
                                     onClick={handleEditorClick}
                                     onMouseUp={saveSelection}
-                                    onKeyUp={(e) => {
-                                        saveSelection();
-                                    }}
+                                    onKeyUp={() => saveSelection()}
                                 />
                             </div>
                         ))}
                         
-                        {/* Overlays (Render only for focused page) */}
-                        {imageSettings.visible && imageSettings.rect && (
+                        {/* Image Overlay — only in edit mode */}
+                        {!readOnlyMode && imageSettings.visible && imageSettings.rect && (
                             <div 
                                 className="absolute pointer-events-none z-[400]" 
                                 style={{
@@ -1032,7 +1030,8 @@ const MSWordOnline = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
                             </div>
                         )}
 
-                        {tableSettings.visible && tableSettings.rect && (
+                        {/* Table Overlay — only in edit mode */}
+                        {!readOnlyMode && tableSettings.visible && tableSettings.rect && (
                             <div 
                                 className="absolute pointer-events-none z-[400]" 
                                 style={{
@@ -1079,24 +1078,33 @@ const MSWordOnline = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
                 )}
             </div>
 
-            {/* ===== Word 365 Status Bar (New) ===== */}
+            {/* ===== Status Bar ===== */}
             <div className="h-6 bg-[#2b579a] flex items-center justify-between px-3 text-white text-[10px] select-none">
                 <div className="flex items-center gap-4">
                     <div className="flex items-center gap-1 hover:bg-white/10 px-2 cursor-pointer h-full transition-colors">
                         <span>Page {focusedPageIdx + 1} of {pages.length}</span>
                     </div>
-                    <div className="flex items-center gap-1 hover:bg-white/10 px-2 cursor-pointer h-full transition-colors" title="Word Count (Active Page)">
+                    <div className="flex items-center gap-1 hover:bg-white/10 px-2 cursor-pointer h-full transition-colors">
                         <span>{editorRefs.current[focusedPageIdx]?.innerText?.replace(/[\r\n]+/g, ' ').split(/\s+/).filter(Boolean).length || 0} words</span>
                     </div>
                     <div className="flex items-center gap-1 hover:bg-white/10 px-2 cursor-pointer h-full transition-colors">
                         <Check className="w-2.5 h-2.5" />
                         <span>Accessibility: Good to go</span>
                     </div>
+                    {/* ✅ NEW: Read-only indicator in status bar */}
+                    {readOnlyMode && (
+                        <div className="flex items-center gap-1 bg-amber-400/20 px-2 h-full border-l border-white/20">
+                            <Lock className="w-2.5 h-2.5 text-amber-300" />
+                            <span className="text-amber-200 font-semibold">READ ONLY</span>
+                        </div>
+                    )}
                 </div>
                 <div className="flex items-center gap-4 h-full">
-                    <div className="flex items-center gap-2 hover:bg-white/10 px-3 cursor-pointer h-full transition-colors">
-                        <span className="font-bold">Focus Mode</span>
-                    </div>
+                    {!readOnlyMode && (
+                        <div className="flex items-center gap-2 hover:bg-white/10 px-3 cursor-pointer h-full transition-colors">
+                            <span className="font-bold">Focus Mode</span>
+                        </div>
+                    )}
                     <div className="flex items-center gap-3 px-3 h-full border-l border-white/20">
                         <button onClick={() => setZoom(Math.max(50, zoom - 10))} className="hover:text-blue-200"><Minus className="w-3 h-3" /></button>
                         <span className="w-8 text-center">{zoom}%</span>
