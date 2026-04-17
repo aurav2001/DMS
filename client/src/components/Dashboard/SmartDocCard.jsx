@@ -147,25 +147,26 @@ const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
   const handleMainView = (e) => {
     if (e) e.stopPropagation();
     const isOffice = isWord || isExcel || isPPT;
-    
-    // ✅ CRITICAL: Build Absolute Authenticated URL for 100% Fidelity (Same Format)
-    // Use /file.docx format to satisfy both the Backend ID requirement and the Office Engine detection
-    const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-    const token = localStorage.getItem('token');
-    const dummyFile = docInfo.isWord ? 'file.docx' : (docInfo.isExcel ? 'file.xlsx' : (docInfo.isPPT ? 'file.pptx' : 'file.pdf'));
-    const absoluteAuthUrl = `${API_BASE}/documents/download/${doc._id}/${dummyFile}?token=${token}`;
+    const isCloudOffice = isOffice && doc.fileUrl?.startsWith('http');
 
     console.log('[Routing Diagnostic]', { 
       id: doc._id, 
       title: doc.title, 
       isOffice, 
-      absoluteAuthUrl,
+      isCloudOffice, 
+      isWord,
+      isExcel,
+      isPPT,
+      fileUrl: doc.fileUrl,
       docInfo 
     });
 
-    // If it's an Office file, ALWAYS use the High-Fidelity Cloud engine for "Same Format"
-    if (isOffice) {
-      setViewState({ isOpen: true, url: absoluteAuthUrl, doc });
+    // If it's an Office file and has a CLOUD URL, prioritize Microsoft/Google Cloud View
+    if (isCloudOffice) {
+      setViewState({ isOpen: true, url: null, doc });
+    } else if (isOffice) {
+      // For Local files, use the internal Premium Previewer (fixed high-fidelity)
+      handleOpenEditor(true);
     } else {
       handleSecureAction('view');
     }

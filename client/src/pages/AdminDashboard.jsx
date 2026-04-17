@@ -414,23 +414,19 @@ const AdminDashboard = () => {
                         onView={() => {
                           const docInfo = getDocType(doc.fileType, doc.fileName, doc.title);
                           const isOffice = docInfo.isWord || docInfo.isExcel || docInfo.isPPT;
-                          
-                          // ✅ Absolute Authenticated URL Bridge (Fixed syntax)
-                          const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-                          const token = localStorage.getItem('token');
-                          const dummyFile = docInfo.isWord ? 'file.docx' : (docInfo.isExcel ? 'file.xlsx' : (docInfo.isPPT ? 'file.pptx' : 'file.pdf'));
-                          const absoluteAuthUrl = `${API_BASE}/documents/download/${doc._id}/${dummyFile}?token=${token}`;
 
                           console.log('[Admin Routing Diagnostic]', {
                             id: doc._id,
                             title: doc.title,
                             isOffice,
-                            absoluteAuthUrl,
-                            docInfo
+                            docInfo,
+                            fileUrl: doc.fileUrl
                           });
                           
-                          if (isOffice) {
-                            setViewState({ isOpen: true, url: absoluteAuthUrl, doc });
+                          if (isOffice && doc.fileUrl?.startsWith('http')) {
+                            setViewState({ isOpen: true, url: null, doc });
+                          } else if (isOffice) {
+                            openInEditor(doc);
                           } else {
                             handleSecureAction(doc, 'view');
                           }
