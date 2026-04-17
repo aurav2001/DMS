@@ -46,6 +46,7 @@ const MSWordOnline = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
     const [imageSettings, setImageSettings] = useState({ visible: false, rect: null });
     const [selectedCell, setSelectedCell] = useState(null);
     const [tableSettings, setTableSettings] = useState({ visible: false, rect: null });
+    const [hfStatus, setHfStatus] = useState('idle'); // 'idle', 'loading', 'success', 'error'
     const editorRefs = useRef([]);
     const fileInputRef = useRef(null);
     const selectionRef = useRef(null);
@@ -128,30 +129,40 @@ const MSWordOnline = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
 
                 if (readOnlyMode) {
                   // ✅ HIGH-FIDELITY JUGAD: Use docx-preview for "Same Format" Original look
+                  setHfStatus('loading');
                   try {
                     if (!window.docx) {
-                      await new Promise((resolve) => {
+                      await new Promise((resolve, reject) => {
                         const script = document.createElement('script');
                         script.src = "https://cdn.jsdelivr.net/npm/docx-preview@0.1.20/dist/docx-preview.js";
                         script.onload = resolve;
+                        script.onerror = reject;
                         document.head.appendChild(script);
                       });
                     }
                     
                     setTimeout(async () => {
-                      const container = document.getElementById('high-fidelity-view');
-                      if (container && window.docx) {
-                        await window.docx.renderAsync(res.data, container, null, {
-                          inWrapper: false,
-                          ignoreHeight: false,
-                          ignoreWidth: false,
-                        });
-                        setLoading(false);
+                      try {
+                        const container = document.getElementById('high-fidelity-view');
+                        if (container && window.docx) {
+                          await window.docx.renderAsync(res.data, container, null, {
+                            inWrapper: false,
+                            ignoreHeight: false,
+                            ignoreWidth: false,
+                          });
+                          setHfStatus('success');
+                          setLoading(false);
+                        } else {
+                          setHfStatus('error');
+                        }
+                      } catch (renderErr) {
+                        console.error("Render Error:", renderErr);
+                        setHfStatus('error');
                       }
                     }, 500);
-                    // We don't return here yet, we let mammoth run as fallback in background
                   } catch (e) {
-                    console.error("High Fidelity Failed:", e);
+                    console.error("High Fidelity Script Load Failed:", e);
+                    setHfStatus('error');
                   }
                 }
 
@@ -998,10 +1009,23 @@ const MSWordOnline = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
                     </div>
                 ) : mode === 'word' ? (
                     <>
-                        {readOnlyMode && (
-                            <div id="high-fidelity-view" className="bg-white shadow-[0_8px_30px_rgb(0,0,0,0.12)] mb-8 overflow-hidden" style={{ width: '816px', minHeight: '1056px' }}></div>
-                        )}
-                        {(!readOnlyMode || (pages.length === 1 && !pages[0].content)) && pages.map((page, idx) => (
+                    {/* High-Fidelity Container (Priority for "Same Format") */}
+                    {readOnlyMode && hfStatus !== 'error' && (
+                        <div className="relative mb-8">
+                            {hfStatus === 'loading' && (
+                                <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur-sm rounded-xl">
+                                    <div className="flex flex-col items-center gap-3">
+                                        <Loader2 className="w-8 h-8 text-primary-600 animate-spin" />
+                                        <p className="text-xs font-bold text-slate-500 animate-pulse">APPLYING HIGH-FIDELITY FORMATTING...</p>
+                                    </div>
+                                </div>
+                            )}
+                            <div id="high-fidelity-view" className="bg-white shadow-[0_8px_30px_rgb(0,0,0,0.12)] overflow-hidden" style={{ width: '816px', minHeight: '1056px' }}></div>
+                        </div>
+                    )}
+                    
+                    {/* Fallback/Editor Pages - Show if not in HF mode OR if HF failed */}
+                    {(hfStatus === 'error' || !readOnlyMode || (hfStatus !== 'success' && pages[0].content)) && pages.map((page, idx) => (
                             <div 
                                 key={page.id}
                                 style={{ transform: `scale(${zoom / 100})`, transformOrigin: 'top center' }}
