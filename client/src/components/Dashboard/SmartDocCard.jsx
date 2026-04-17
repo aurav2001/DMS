@@ -108,29 +108,35 @@ const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
         link.click();
         link.remove();
       } else {
-        // ULTIMATE JUGAD: Binary Sniffing
-        // We read the first few bytes to identify the file format correctly
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          const arr = (new Uint8Array(reader.result)).subarray(0, 4);
-          let header = "";
-          for(let i = 0; i < arr.length; i++) {
-             header += arr[i].toString(16);
-          }
-          
-          // 504b0304 is the PK.. header for DOCX/XLSX/PPTX
-          const isOffice = header.startsWith("504b"); 
-          // 25504446 is %PDF
-          const isPDF = header.startsWith("2550");
+        // ROBUST ROUTING: Sniff binary + Fallback to metadata
+        const detectType = () => new Promise(resolve => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const arr = (new Uint8Array(reader.result)).subarray(0, 4);
+            let header = "";
+            for(let i = 0; i < arr.length; i++) {
+               header += arr[i].toString(16).padStart(2, '0');
+            }
+            resolve({
+              isModern: header.startsWith("504b"), // PK..
+              isLegacy: header.startsWith("d0cf11e0"), // old doc/xls
+              isPDF: header.startsWith("2550") // %PDF
+            });
+          };
+          reader.readAsArrayBuffer(response.data);
+        });
 
-          if (isOffice) {
-            handleOpenEditor(true);
-          } else {
-            // Normal fallback for PDFs and Images
-            setViewState({ isOpen: true, url, doc });
-          }
-        };
-        reader.readAsArrayBuffer(response.data);
+        const binary = await detectType();
+        const info = getDocType(contentType, doc.fileName, doc.title);
+        
+        const isActuallyOffice = binary.isModern || binary.isLegacy || info.isWord || info.isExcel || info.isPPT;
+
+        if (isActuallyOffice) {
+          handleOpenEditor(true);
+        } else {
+          // Normal fallback for PDFs and Images
+          setViewState({ isOpen: true, url, doc });
+        }
       }
     } catch (err) {
       console.error(err);

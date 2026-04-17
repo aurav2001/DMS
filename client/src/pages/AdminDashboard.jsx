@@ -117,24 +117,31 @@ const AdminDashboard = () => {
         link.click();
         link.remove();
       } else {
-        // ULTIMATE JUGAD: Binary Sniffing for Admins
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          const arr = (new Uint8Array(reader.result)).subarray(0, 4);
-          let header = "";
-          for(let i = 0; i < arr.length; i++) {
-             header += arr[i].toString(16);
-          }
-          
-          const isOffice = header.startsWith("504b"); 
+        // ROBUST ROUTING: Sniff binary + Fallback to metadata
+        const detectType = () => new Promise(resolve => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const arr = (new Uint8Array(reader.result)).subarray(0, 4);
+            let header = "";
+            for(let i = 0; i < arr.length; i++) {
+               header += arr[i].toString(16).padStart(2, '0');
+            }
+            resolve({
+              isModern: header.startsWith("504b"), // PK..
+              isLegacy: header.startsWith("d0cf11e0") // old doc/xls
+            });
+          };
+          reader.readAsArrayBuffer(response.data);
+        });
 
-          if (isOffice) {
-            openInEditor(doc);
-          } else {
-            setViewState({ isOpen: true, url, doc });
-          }
-        };
-        reader.readAsArrayBuffer(response.data);
+        const { isModern, isLegacy } = await detectType();
+        const info = getDocType(contentType, doc.fileName, doc.title);
+        
+        if (isModern || isLegacy || info.isWord || info.isExcel || info.isPPT) {
+          openInEditor(doc);
+        } else {
+          setViewState({ isOpen: true, url, doc });
+        }
       }
     } catch (err) {
       console.error(err);
