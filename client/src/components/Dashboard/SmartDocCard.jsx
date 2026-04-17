@@ -149,12 +149,11 @@ const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
     const isOffice = isWord || isExcel || isPPT;
     
     // ✅ CRITICAL: Build Absolute Authenticated URL for 100% Fidelity (Same Format)
+    // Use /file.docx format to satisfy both the Backend ID requirement and the Office Engine detection
     const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
     const token = localStorage.getItem('token');
-    
-    // We add a dummy extension at the end so Microsoft/Google engines know the file type immediately
-    const extension = isWord ? '.docx' : (isExcel ? '.xlsx' : (isPPT ? '.pptx' : ''));
-    const absoluteAuthUrl = `${API_BASE}/documents/download/${doc._id}${extension}?token=${token}`;
+    const dummyFile = docInfo.isWord ? 'file.docx' : (docInfo.isExcel ? 'file.xlsx' : (docInfo.isPPT ? 'file.pptx' : 'file.pdf'));
+    const absoluteAuthUrl = `${API_BASE}/documents/download/${doc._id}/${dummyFile}?token=${token}`;
 
     console.log('[Routing Diagnostic]', { 
       id: doc._id, 
