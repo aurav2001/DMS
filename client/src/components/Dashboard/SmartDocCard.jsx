@@ -97,7 +97,8 @@ const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
         responseType: 'blob',
         headers: { 'x-auth-token': token }
       });
-      const url = window.URL.createObjectURL(new Blob([response.data], { type: response.headers['content-type'] }));
+      const contentType = response.headers['content-type'];
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: contentType }));
       
       if (action === 'download') {
         const link = document.createElement('a');
@@ -107,7 +108,13 @@ const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
         link.click();
         link.remove();
       } else {
-        setViewState({ isOpen: true, url, doc });
+        // Safety net: Detect Office files from the actual server response type
+        const freshInfo = getDocType(contentType, doc.fileName, doc.title);
+        if (freshInfo.isWord || freshInfo.isExcel || freshInfo.isPPT) {
+            handleOpenEditor(true);
+        } else {
+            setViewState({ isOpen: true, url, doc });
+        }
       }
     } catch (err) {
       console.error(err);

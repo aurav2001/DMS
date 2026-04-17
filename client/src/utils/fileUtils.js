@@ -11,10 +11,24 @@ export const getDocType = (fileType = '', fileName = '', title = '') => {
     const hasExt = (exts) => exts.some(ext => f.endsWith(ext) || s.endsWith(ext));
 
     const isPdf = t.includes('pdf') || hasExt(['.pdf']);
-    const isExcel = t.includes('spreadsheet') || t.includes('excel') || t.includes('csv') || hasExt(['.xlsx', '.xls', '.csv']);
-    const isPPT = t.includes('presentation') || t.includes('powerpoint') || hasExt(['.pptx', '.ppt']);
-    const isWord = t.includes('word') || t.includes('officedocument.word') || hasExt(['.docx', '.doc']);
-    const isImage = t.includes('image');
+    
+    const isExcel = t.includes('spreadsheet') || 
+                   t.includes('excel') || 
+                   t.includes('csv') || 
+                   t.includes('sheet') ||
+                   hasExt(['.xlsx', '.xls', '.csv', '.ods']);
+
+    const isPPT = t.includes('presentation') || 
+                 t.includes('powerpoint') || 
+                 t.includes('slides') ||
+                 hasExt(['.pptx', '.ppt', '.odp']);
+
+    const isWord = t.includes('word') || 
+                  t.includes('officedocument.word') || 
+                  t.includes('text/rtf') ||
+                  hasExt(['.docx', '.doc', '.rtf', '.odt']);
+
+    const isImage = t.includes('image') || hasExt(['.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp']);
 
     return {
         isPdf,
