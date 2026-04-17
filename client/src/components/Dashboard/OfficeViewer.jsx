@@ -26,7 +26,7 @@ const OfficeViewer = ({ doc, onClose }) => {
                 {doc.title}
               </h3>
               <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">
-                {engine === 'microsoft' ? 'Microsoft Engine' : 'Google Engine'} (Cloud View)
+                {engine === 'microsoft' ? 'Microsoft Native Engine' : 'Google Native Engine'} (Same Format)
               </p>
             </div>
           </div>
