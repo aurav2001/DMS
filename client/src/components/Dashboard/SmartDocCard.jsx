@@ -149,6 +149,18 @@ const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
     const isOffice = isWord || isExcel || isPPT;
     const isCloudOffice = isOffice && doc.fileUrl?.startsWith('http');
 
+    console.log('[Routing Diagnostic]', { 
+      id: doc._id, 
+      title: doc.title, 
+      isOffice, 
+      isCloudOffice, 
+      isWord,
+      isExcel,
+      isPPT,
+      fileUrl: doc.fileUrl,
+      docInfo 
+    });
+
     // If it's an Office file and has a CLOUD URL, prioritize Microsoft/Google Cloud View
     if (isCloudOffice) {
       setViewState({ isOpen: true, url: null, doc });
@@ -306,6 +318,7 @@ const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
           <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-50 dark:border-white/5">
             <div className="flex items-center gap-2">
               <span className="text-[10px] font-bold text-slate-500">{(doc.fileSize / 1024 / 1024).toFixed(2)} MB</span>
+              <span className="text-[8px] text-slate-300">V5.8-ULTRA-SECURE</span>
               {doc.storageType === 'cloudinary' && (
                 <span className="bg-emerald-500/10 text-emerald-600 text-[8px] px-1.5 py-0.5 font-black rounded uppercase tracking-wider border border-emerald-500/20">
                   Cloud Protected

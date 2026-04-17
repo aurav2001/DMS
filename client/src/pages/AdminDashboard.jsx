@@ -183,7 +183,10 @@ const AdminDashboard = () => {
                 <Shield className="w-6 h-6" />
               </div>
               <div>
-                <h1 className="text-xl font-bold">Admin Dashboard</h1>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-xl font-bold">Admin Dashboard</h1>
+                  <span className="text-[10px] text-slate-500 bg-white/5 px-2 py-0.5 rounded-full border border-white/10">V5.8-ADMIN-SECURE</span>
+                </div>
                 <p className="text-xs text-slate-400">DocVault Management Console</p>
               </div>
             </div>
@@ -411,6 +414,14 @@ const AdminDashboard = () => {
                         onView={() => {
                           const docInfo = getDocType(doc.fileType, doc.fileName, doc.title);
                           const isOffice = docInfo.isWord || docInfo.isExcel || docInfo.isPPT;
+
+                          console.log('[Admin Routing Diagnostic]', {
+                            id: doc._id,
+                            title: doc.title,
+                            isOffice,
+                            docInfo,
+                            fileUrl: doc.fileUrl
+                          });
                           
                           if (isOffice && doc.fileUrl?.startsWith('http')) {
                             setViewState({ isOpen: true, url: null, doc });

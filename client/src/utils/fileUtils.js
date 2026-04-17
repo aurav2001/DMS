@@ -3,9 +3,9 @@
  */
 
 export const getDocType = (fileType = '', fileName = '', title = '') => {
-    const t = (fileType || '').toLowerCase();
-    const f = (fileName || '').toLowerCase();
-    const s = (title || '').toLowerCase();
+    const t = (fileType || '').toLowerCase().trim();
+    const f = (fileName || '').toLowerCase().trim();
+    const s = (title || '').toLowerCase().trim();
 
     // Helper for extension checking
     const hasExt = (exts) => exts.some(ext => f.endsWith(ext) || s.endsWith(ext));
