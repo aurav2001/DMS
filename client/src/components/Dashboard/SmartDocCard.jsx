@@ -185,10 +185,12 @@ const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
             {canView && (
               <button 
                 onClick={() => {
-                  const isCloudOffice = (isWord || isExcel || isPPT) && doc.fileUrl?.startsWith('http');
-                  if (isCloudOffice) {
+                  const isOffice = isWord || isExcel || isPPT;
+                  // If it's an Office file and has a URL, prioritize Microsoft/Google Cloud View
+                  if (isOffice && doc.fileUrl) {
                     setViewState({ isOpen: true, url: null, doc });
-                  } else if (isWord || isExcel || isPPT) {
+                  } else if (isOffice) {
+                    // Fallback to internal premium editor if no public URL
                     handleOpenEditor(true);
                   } else {
                     handleSecureAction('view');
