@@ -3,6 +3,9 @@ import axios from 'axios';
 import { Search, Eye, FileText, Database, EyeOff, X, FileImage, FileVideo, FileAudio, Archive, File } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
+import MSWordOnline from '../Dashboard/MSWordOnline';
+import SpreadsheetEngine from '../Dashboard/SpreadsheetEngine';
+import OfficeViewer from '../Dashboard/OfficeViewer';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -47,29 +50,8 @@ const PublicDocuments = () => {
   }, [searchQuery]);
 
   const handleViewSecure = async (doc) => {
-    try {
-      const response = await axios.get(`${API_BASE}/public/view/${doc._id}`, {
-        responseType: 'arraybuffer'
-      });
-      
-      const isWord = doc.fileType.includes('word') || doc.fileType.includes('officedocument');
-      let url = null;
-      let htmlContent = null;
-
-      if (isWord) {
-        const mammoth = await import('mammoth');
-        const result = await mammoth.convertToHtml({ arrayBuffer: response.data });
-        htmlContent = result.value;
-      } else {
-        const blob = new Blob([response.data], { type: response.headers['content-type'] || 'application/pdf' });
-        url = window.URL.createObjectURL(blob);
-      }
-      
-      setViewState({ isOpen: true, url, htmlContent, doc, isWord });
-    } catch (err) {
-      console.error(err);
-      alert('Failed to load document preview.');
-    }
+    // For Public View, we use the Premium Internal Viewers directly
+    setViewState({ isOpen: true, doc });
   };
 
   return (
@@ -204,42 +186,36 @@ const PublicDocuments = () => {
       </div>
 
       <AnimatePresence>
-        {viewState.isOpen && (
-          <motion.div 
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[60] bg-slate-900/95 backdrop-blur-md flex items-center justify-center p-4 selection:bg-transparent"
-            onContextMenu={(e) => e.preventDefault()}
-            style={{ WebkitUserSelect: 'none', userSelect: 'none' }}
-          >
-            <button 
-              onClick={() => setViewState({ isOpen: false, url: null, doc: null })} 
-              className="absolute top-6 right-6 p-2 bg-white/10 hover:bg-red-500 text-white rounded-full transition-colors z-[70]"
-            >
-              <X className="w-6 h-6" />
-            </button>
-            <div className="relative w-full max-w-5xl h-[85vh] bg-white rounded-xl overflow-hidden shadow-2xl ring-1 ring-white/10 flex flex-col">
-              {viewState.isWord ? (
-                <div 
-                  className="flex-1 overflow-auto p-8 md:p-16 bg-white prose prose-slate max-w-none break-words pointer-events-auto" 
-                  dangerouslySetInnerHTML={{ __html: viewState.htmlContent }} 
-                />
-              ) : (
-                <iframe 
-                  src={`${viewState.url}#toolbar=0`} 
-                  className="w-full h-full border-0 pointer-events-auto flex-1" 
-                  title="Secure Viewer"
-                  onContextMenu={(e) => e.preventDefault()}
-                />
-              )}
-              <div className="absolute inset-0 z-50 pointer-events-none overflow-hidden flex flex-wrap content-around justify-center opacity-10">
-                {Array.from({length: 30}).map((_, i) => (
-                  <span key={i} className="text-4xl font-bold -rotate-45 text-slate-900 mx-10 my-10 select-none">
-                    {user?.email || 'GUEST-ACCESS'} - PUBLIC VIEW
-                  </span>
-                ))}
-              </div>
-            </div>
-          </motion.div>
+        {viewState.isOpen && viewState.doc && (
+          <>
+            {(viewState.doc.fileType?.includes('word') || viewState.doc.fileType?.includes('officedocument')) ? (
+              <MSWordOnline 
+                doc={viewState.doc} 
+                onClose={() => setViewState({ isOpen: false, doc: null })} 
+                readOnlyMode={true} 
+              />
+            ) : (viewState.doc.fileType?.includes('excel') || viewState.doc.fileType?.includes('sheet') || viewState.doc.fileType?.includes('csv')) ? (
+              <SpreadsheetEngine 
+                doc={viewState.doc} 
+                onClose={() => setViewState({ isOpen: false, doc: null })} 
+                readOnlyMode={true} 
+              />
+            ) : (
+                <div className="fixed inset-0 z-[200] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="relative w-full max-w-5xl h-[85vh] bg-white rounded-xl overflow-hidden shadow-2xl flex flex-col">
+                        <div className="h-14 border-b flex items-center justify-between px-6 bg-slate-50">
+                            <h3 className="font-bold text-slate-800">{viewState.doc.title}</h3>
+                            <button onClick={() => setViewState({ isOpen: false, doc: null })} className="text-red-500 font-bold p-2">CLOSE</button>
+                        </div>
+                        <iframe 
+                            src={`${API_BASE}/public/view/${viewState.doc._id}#toolbar=0`} 
+                            className="w-full h-full border-0 flex-1" 
+                            title="Secure Viewer"
+                        />
+                    </div>
+                </div>
+            )}
+          </>
         )}
       </AnimatePresence>
     </section>
