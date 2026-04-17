@@ -6,7 +6,8 @@ import axios from 'axios';
 import { 
   Users, FileText, HardDrive, Shield, Trash2, Eye, EyeOff, 
   Download, Edit3, Camera, CameraOff, Lock, Unlock, ChevronDown,
-  BarChart3, ArrowLeft, Search, AlertTriangle, X, UserPlus, Loader2
+  BarChart3, ArrowLeft, Search, AlertTriangle, X, UserPlus, Loader2,
+  FileSpreadsheet, Presentation, FileCode, FileImage, FileBox, PlayCircle, FileSearch, CheckCircle // ✅ Added for file type identification
 } from 'lucide-react';
 import AddUserModal from '../components/Admin/AddUserModal';
 
@@ -494,12 +495,22 @@ const AdminDashboard = () => {
                               className="w-full flex items-center justify-between p-3 hover:bg-white/5 rounded-xl transition-all border border-transparent hover:border-white/10"
                             >
                               <div className="flex items-center gap-3">
-                                <FileText className="w-5 h-5 text-indigo-400" />
-                                <div className="text-left">
-                                  <p className="text-sm font-medium">{doc.title}</p>
-                                  <p className="text-xs text-slate-500">{doc.uploadedBy?.name} • {formatBytes(doc.fileSize)}</p>
+                                  {(() => {
+                                      const info = getDocType(doc.fileType, doc.fileName, doc.title);
+                                      const IconComp = info.isWord ? FileText : info.isExcel ? FileSpreadsheet : info.isPPT ? Presentation : info.isPdf ? FileSearch : info.isImage ? FileImage : FileBox;
+                                      const colorClass = info.isWord ? 'text-blue-400' : info.isExcel ? 'text-emerald-400' : info.isPPT ? 'text-orange-400' : info.isPdf ? 'text-red-400' : 'text-indigo-400';
+                                      return <IconComp className={`w-5 h-5 ${colorClass}`} />;
+                                  })()}
+                                  <div className="text-left">
+                                    <p className="text-sm font-medium">{doc.title}</p>
+                                    <p className="text-xs text-slate-500">
+                                        {doc.uploadedBy?.name} • {formatBytes(doc.fileSize)} • 
+                                        <span className="ml-1 uppercase text-[10px] font-bold tracking-tighter opacity-70">
+                                            {getDocType(doc.fileType, doc.fileName, doc.title).mainType}
+                                        </span>
+                                    </p>
+                                  </div>
                                 </div>
-                              </div>
                               <div className="px-3 py-1 bg-indigo-500/10 text-indigo-400 rounded-lg text-xs font-bold">Share</div>
                             </button>
                           ))
@@ -621,13 +632,36 @@ const DocumentPermissionCard = ({ doc, onUpdate, formatBytes, users, onView }) =
         onClick={() => setExpanded(!expanded)}
       >
         <div className="flex items-center gap-4">
-          <div className="bg-indigo-500/20 p-2.5 rounded-xl">
-            <FileText className="w-5 h-5 text-indigo-400" />
-          </div>
+          {(() => {
+            const info = getDocType(doc.fileType, doc.fileName, doc.title);
+            const IconComp = info.isWord ? FileText : info.isExcel ? FileSpreadsheet : info.isPPT ? Presentation : info.isPdf ? FileSearch : info.isImage ? FileImage : FileBox;
+            const bgClass = info.isWord ? 'bg-blue-500/20' : info.isExcel ? 'bg-emerald-500/20' : info.isPPT ? 'bg-orange-500/20' : info.isPdf ? 'bg-red-500/20' : 'bg-indigo-500/20';
+            const textClass = info.isWord ? 'text-blue-400' : info.isExcel ? 'text-emerald-400' : info.isPPT ? 'text-orange-400' : info.isPdf ? 'text-red-400' : 'text-indigo-400';
+            
+            return (
+              <div className={`${bgClass} p-2.5 rounded-xl transition-all`}>
+                <IconComp className={`w-5 h-5 ${textClass}`} />
+              </div>
+            );
+          })()}
           <div>
-            <p className="font-medium">{doc.title}</p>
+            <div className="flex items-center gap-2">
+                <p className="font-medium">{doc.title}</p>
+                <span className={`text-[9px] px-1.5 py-0.5 rounded font-black uppercase tracking-wider ${
+                    (() => {
+                        const info = getDocType(doc.fileType, doc.fileName, doc.title);
+                        return info.isWord ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 
+                               info.isExcel ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 
+                               info.isPPT ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' : 
+                               info.isPdf ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 
+                               'bg-slate-500/20 text-slate-400 border border-slate-500/30';
+                    })()
+                }`}>
+                    {getDocType(doc.fileType, doc.fileName, doc.title).mainType}
+                </span>
+            </div>
             <p className="text-xs text-slate-400">
-              by {doc.uploadedBy?.name} • {formatBytes(doc.fileSize)} • {doc.fileType}
+              by {doc.uploadedBy?.name} • {formatBytes(doc.fileSize)}
             </p>
           </div>
         </div>
