@@ -94,34 +94,45 @@ const sendContactEmail = async (req, res) => {
 
     try {
         const transporter = nodemailer.createTransport({
-            service: process.env.EMAIL_SERVICE || 'gmail',
+            host: 'smtp.gmail.com',
+            port: 465,
+            secure: true, // use SSL
             auth: {
                 user: process.env.EMAIL_USER,
                 pass: process.env.EMAIL_PASS
+            },
+            tls: {
+                rejectUnauthorized: false // Helps in some restrictive environments
             }
         });
 
         const mailOptions = {
-            from: `"${name}" <${process.env.EMAIL_USER}>`,
+            from: `"DocVault Contact" <${process.env.EMAIL_USER}>`,
             to: process.env.CONTACT_RECEIVER_EMAIL,
             replyTo: email,
             subject: `Contact Form: ${subject}`,
             html: `
-                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e1e1e1; border-radius: 10px; overflow: hidden;">
-                    <div style="background-color: #4f46e5; color: white; padding: 20px; text-align: center;">
-                        <h2 style="margin: 0;">New Contact Inquiry</h2>
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e1e1e1; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+                    <div style="background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); color: white; padding: 30px; text-align: center;">
+                        <h2 style="margin: 0; font-size: 24px;">New Contact Inquiry</h2>
+                        <p style="margin: 5px 0 0; opacity: 0.8;">You have received a new message from ${name}</p>
                     </div>
-                    <div style="padding: 20px; line-height: 1.6; color: #333;">
-                        <p><strong>Name:</strong> ${name}</p>
-                        <p><strong>Email:</strong> ${email}</p>
-                        <p><strong>Subject:</strong> ${subject}</p>
-                        <div style="margin-top: 20px; padding: 15px; background-color: #f9fafb; border-left: 4px solid #4f46e5;">
-                            <strong>Message:</strong><br/>
-                            ${message.replace(/\n/g, '<br/>')}
+                    <div style="padding: 30px; line-height: 1.6; color: #374151;">
+                        <div style="margin-bottom: 20px;">
+                            <p style="margin: 0; color: #6b7280; font-size: 12px; font-weight: bold; text-transform: uppercase;">From</p>
+                            <p style="margin: 4px 0; font-size: 16px;"><strong>${name}</strong> (${email})</p>
+                        </div>
+                        <div style="margin-bottom: 25px;">
+                            <p style="margin: 0; color: #6b7280; font-size: 12px; font-weight: bold; text-transform: uppercase;">Subject</p>
+                            <p style="margin: 4px 0; font-size: 16px;">${subject}</p>
+                        </div>
+                        <div style="padding: 20px; background-color: #f8fafc; border-radius: 8px; border-left: 4px solid #4f46e5;">
+                            <p style="margin: 0; color: #6b7280; font-size: 12px; font-weight: bold; text-transform: uppercase; margin-bottom: 8px;">Message</p>
+                            <div style="font-size: 15px; color: #1f2937; white-space: pre-wrap;">${message}</div>
                         </div>
                     </div>
-                    <div style="background-color: #f3f4f6; color: #6b7280; padding: 10px; text-align: center; font-size: 12px;">
-                        Sent from DocVault Contact Form
+                    <div style="background-color: #f9fafb; color: #9ca3af; padding: 15px; text-align: center; font-size: 11px; border-top: 1px solid #f3f4f6;">
+                        This email was sent from the DocVault Contact Form securely via NodeMailer.
                     </div>
                 </div>
             `
@@ -131,10 +142,11 @@ const sendContactEmail = async (req, res) => {
         res.json({ success: true, message: 'Message sent successfully' });
 
     } catch (err) {
-        console.error('Nodemailer Error:', err);
+        console.error('Nodemailer Critical Error:', err);
         res.status(500).json({ 
-            message: 'Error sending message. Please check server email configuration.',
-            error: process.env.NODE_ENV === 'development' ? err.message : undefined
+            success: false,
+            message: 'Error sending message. Please ensure backend environment variables are set correctly.',
+            error: err.message
         });
     }
 };
