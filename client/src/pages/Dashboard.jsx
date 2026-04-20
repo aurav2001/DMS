@@ -56,13 +56,6 @@ const Dashboard = () => {
         if (token) fetchContents();
     }, [token, activeTab, searchQuery, currentFolderId]);
 
-    // Listen for New Folder request from Layout
-    useEffect(() => {
-        const handleOpenNewFolder = () => setIsNewFolderOpen(true);
-        window.addEventListener('open-new-folder-modal', handleOpenNewFolder);
-        return () => window.removeEventListener('open-new-folder-modal', handleOpenNewFolder);
-    }, []);
-
     const handleFolderOpen = (id, name) => {
         setCurrentFolderId(id);
     };
@@ -137,6 +130,7 @@ const Dashboard = () => {
     return (
         <DashboardLayout 
             onUploadClick={() => setIsUploadOpen(true)}
+            onNewFolderClick={() => setIsNewFolderOpen(true)}
             onShareClick={() => setIsShareModalOpen(true)}
             onSyncClick={handleSync}
             activeTab={activeTab}

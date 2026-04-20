@@ -40,10 +40,12 @@ const DashboardLayout = ({
   setSearchQuery,
   docCount,
   onShareClick,
-  onSyncClick
+  onSyncClick,
+  onNewFolderClick
 }) => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [userDropdown, setUserDropdown] = useState(false);
+  const [isNewMenuOpen, setIsNewMenuOpen] = useState(false);
   const { user, logout } = useAuth();
   const [darkMode, setDarkMode] = useState(false);
 
@@ -183,17 +185,58 @@ const DashboardLayout = ({
               </div>
               <div className="flex items-center gap-3">
                 {user?.role !== 'Viewer' && (
-                  <>
+                  <div className="relative">
                     <button 
-                      onClick={() => window.dispatchEvent(new CustomEvent('open-new-folder-modal'))}
-                      className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-xl font-bold hover:bg-slate-50 transition-all shadow-sm"
+                      onClick={() => setIsNewMenuOpen(!isNewMenuOpen)}
+                      className="btn-primary flex items-center gap-2 px-5 py-2.5 shadow-lg shadow-primary-500/20 group h-11"
                     >
-                      <Plus className="w-4 h-4 text-primary-500" /> New Folder
+                      <Plus className={`w-5 h-5 transition-transform duration-300 ${isNewMenuOpen ? 'rotate-45' : ''}`} />
+                      <span className="font-bold">Add New</span>
                     </button>
-                    <button onClick={onUploadClick} className="btn-primary flex items-center gap-2 px-5 py-2.5 shadow-lg shadow-primary-500/20">
-                      <Plus className="w-5 h-5" /> Upload New
-                    </button>
-                  </>
+
+                    <AnimatePresence>
+                      {isNewMenuOpen && (
+                        <>
+                          <div 
+                            className="fixed inset-0 z-40 bg-transparent" 
+                            onClick={() => setIsNewMenuOpen(false)}
+                          />
+                          <motion.div 
+                            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                            className="absolute right-0 mt-2 w-56 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-2xl shadow-2xl z-50 overflow-hidden py-2"
+                          >
+                            <button 
+                              onClick={() => { onNewFolderClick(); setIsNewMenuOpen(false); }}
+                              className="w-full flex items-center gap-3 px-4 py-3 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors text-left"
+                            >
+                              <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600">
+                                <FileText className="w-4 h-4" />
+                              </div>
+                              <div>
+                                <p className="font-bold text-sm">New Folder</p>
+                                <p className="text-[10px] text-slate-400">Organize your files</p>
+                              </div>
+                            </button>
+                            
+                            <button 
+                              onClick={() => { onUploadClick(); setIsNewMenuOpen(false); }}
+                              className="w-full flex items-center gap-3 px-4 py-3 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors text-left"
+                            >
+                              <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600">
+                                <Plus className="w-4 h-4" />
+                              </div>
+                              <div>
+                                <p className="font-bold text-sm">Upload File</p>
+                                <p className="text-[10px] text-slate-400">PDF, Images, Word...</p>
+                              </div>
+                            </button>
+                          </motion.div>
+                        </>
+                      )}
+                    </AnimatePresence>
+                  </div>
                 )}
               </div>
             </div>
