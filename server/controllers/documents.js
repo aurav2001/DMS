@@ -2,6 +2,7 @@ const Document = require('../models/Document');
 const User = require('../models/User');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const { uploadToSFTP, downloadFromSFTP } = require('../utils/sftp');
 const cloudinary = require('cloudinary').v2;
 
@@ -100,7 +101,14 @@ const uploadDocument = async (req, res) => {
 const downloadDocument = async (req, res) => {
     try {
         const { versionNumber } = req.params;
-        let document = await Document.findById(req.params.id);
+        let id = req.params.id;
+        
+        // Hardening: Strip any accidental extensions (e.g., .docx) if present in the ID path segment
+        if (id && id.includes('.')) {
+            id = id.split('.')[0];
+        }
+
+        let document = await Document.findById(id);
         if (!document) return res.status(404).json({ message: 'Document not found' });
 
         // If a specific version is requested
@@ -141,6 +149,15 @@ const downloadDocument = async (req, res) => {
                 const stats = fs.statSync(filePath);
                 res.set('Content-Length', stats.size);
                 return fs.createReadStream(filePath).pipe(res);
+            }
+        } else if (document.storageType === 'sftp' && storagePathToRes) {
+            try {
+                const data = await downloadFromSFTP(storagePathToRes);
+                res.set('Content-Length', data.length);
+                return res.send(data);
+            } catch (sftpErr) {
+                console.error('SFTP Download Error:', sftpErr);
+                // Fallback to memory data if available
             }
         } else if (document.storageType === 'cloudinary') {
             return res.redirect(document.fileUrl);
@@ -284,7 +301,9 @@ const syncLocalFiles = async (req, res) => {
 
 const deleteDocument = async (req, res) => {
     try {
-        const document = await Document.findById(req.params.id);
+        let id = req.params.id;
+        if (id && id.includes('.')) id = id.split('.')[0];
+        const document = await Document.findById(id);
         if (!document) return res.status(404).json({ message: 'Document not found' });
         
         const isAdmin = req.user.role === 'Admin';
@@ -375,7 +394,9 @@ const unshareDocument = async (req, res) => {
 
 const viewDocument = async (req, res) => {
     try {
-        const document = await Document.findById(req.params.id);
+        let id = req.params.id;
+        if (id && id.includes('.')) id = id.split('.')[0];
+        const document = await Document.findById(id);
         if (!document) {
             return res.status(404).json({ message: 'Document not found' });
         }
@@ -401,6 +422,14 @@ const viewDocument = async (req, res) => {
                 const stats = fs.statSync(filePath);
                 res.set('Content-Length', stats.size);
                 return fs.createReadStream(filePath).pipe(res);
+            }
+        } else if (document.storageType === 'sftp' && document.storagePath) {
+            try {
+                const data = await downloadFromSFTP(document.storagePath);
+                res.set('Content-Length', data.length);
+                return res.send(data);
+            } catch (sftpErr) {
+                console.error('SFTP View Error:', sftpErr);
             }
         } else if (document.storageType === 'cloudinary') {
             return res.redirect(document.fileUrl);
@@ -506,7 +535,12 @@ const updateDocumentVersion = async (req, res) => {
                     const filePath = path.join(storageDir, newFileName);
                     fs.writeFileSync(filePath, docxBuffer);
                     document.storagePath = newFileName;
-                } else if (document.storageType === 'cloudinary') {
+                } else if (storageType === 'sftp') {
+                    const newFileName = `v${newVersionNumber}_${document.fileName}`;
+                    const remotePath = `${process.env.SFTP_BASE_PATH || '/uploads'}/${newFileName}`;
+                    await uploadToSFTP(docxBuffer, remotePath);
+                    document.storagePath = remotePath;
+                } else if (storageType === 'cloudinary') {
                     const uploadPromise = new Promise((resolve, reject) => {
                         const uploadStream = cloudinary.uploader.upload_stream(
                             { 
@@ -540,6 +574,11 @@ const updateDocumentVersion = async (req, res) => {
                 const filePath = path.join(__dirname, '../uploads', newFileName);
                 fs.writeFileSync(filePath, req.file.buffer);
                 document.storagePath = newFileName;
+            } else if (document.storageType === 'sftp') {
+                const newFileName = `v${newVersionNumber}_${req.file.originalname}`;
+                const remotePath = `${process.env.SFTP_BASE_PATH || '/uploads'}/${newFileName}`;
+                await uploadToSFTP(req.file.buffer, remotePath);
+                document.storagePath = remotePath;
             } else if (document.storageType === 'cloudinary') {
                 const uploadPromise = new Promise((resolve, reject) => {
                     const uploadStream = cloudinary.uploader.upload_stream(
@@ -649,6 +688,56 @@ const openInDesktop = async (req, res) => {
     }
 };
 
+const getPublicDocument = async (req, res) => {
+    try {
+        let id = req.params.id;
+        if (id && id.includes('.')) id = id.split('.')[0];
+        const { accessKey } = req.query;
+        
+        const secret = process.env.JWT_SECRET || 'fallback_secret';
+        const expectedKey = crypto.createHmac('sha256', secret).update(id).digest('hex');
+        
+        if (accessKey !== expectedKey) {
+            return res.status(401).json({ message: 'Invalid or expired access key' });
+        }
+
+        const document = await Document.findById(id);
+        if (!document) return res.status(404).json({ message: 'Document not found' });
+
+        let fileDataToRes = document.fileData;
+        let fileNameToRes = document.fileName;
+        let fileTypeToRes = document.fileType;
+        let storagePathToRes = document.storagePath;
+
+        res.set({
+            'Content-Type': fileTypeToRes,
+            'Content-Disposition': `inline; filename="${fileNameToRes || 'view'}"`,
+            'Access-Control-Allow-Origin': '*'
+        });
+
+        if (document.storageType === 'local' && storagePathToRes) {
+            const storageDir = process.env.LOCAL_STORAGE_PATH || path.join(__dirname, '../uploads');
+            const filePath = path.join(storageDir, storagePathToRes);
+            if (fs.existsSync(filePath)) {
+                return fs.createReadStream(filePath).pipe(res);
+            }
+        } else if (document.storageType === 'sftp' && storagePathToRes) {
+            try {
+                const data = await downloadFromSFTP(storagePathToRes);
+                return res.send(data);
+            } catch (sftpErr) {
+                console.error('SFTP Public View Error:', sftpErr);
+            }
+        }
+        
+        if (!fileDataToRes) return res.status(404).json({ message: 'File data not found' });
+        res.send(fileDataToRes);
+    } catch (err) {
+        console.error('Public Bridge Error:', err);
+        res.status(500).json({ message: err.message });
+    }
+};
+
 module.exports = { 
     uploadDocument, 
     getDocuments, 
@@ -661,5 +750,6 @@ module.exports = {
     updateDocumentMetadata,
     updateDocumentVersion,
     syncLocalFiles,
-    openInDesktop
+    openInDesktop,
+    getPublicDocument
 };

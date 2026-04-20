@@ -55,7 +55,7 @@ const MSWordOnline = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
 
     useEffect(() => {
         loadDocument();
-    }, [doc]);
+    }, [doc, readOnlyMode]);
 
     // ✅ FIX: Block all keyboard input when readOnlyMode is true
     useEffect(() => {

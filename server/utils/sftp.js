@@ -12,6 +12,17 @@ const uploadToSFTP = async (fileBuffer, remotePath) => {
     const sftp = new Client();
     try {
         await sftp.connect(sftpConfig);
+        
+        // Extract directory and ensure it exists
+        const parts = remotePath.split('/');
+        if (parts.length > 1) {
+            const remoteDir = parts.slice(0, -1).join('/');
+            const exists = await sftp.exists(remoteDir);
+            if (!exists) {
+                await sftp.mkdir(remoteDir, true);
+            }
+        }
+
         await sftp.put(fileBuffer, remotePath);
         return true;
     } catch (err) {

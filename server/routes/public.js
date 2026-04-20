@@ -4,5 +4,6 @@ const router = express.Router();
 
 router.get('/documents', getPublicData);
 router.get('/view/:id', viewPublicDocument);
+router.post('/contact', sendContactEmail);
 
 module.exports = router;

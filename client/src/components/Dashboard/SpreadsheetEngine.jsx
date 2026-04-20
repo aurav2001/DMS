@@ -16,7 +16,7 @@ const ExcelEditor = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
 
     useEffect(() => {
         loadExcel();
-    }, [doc]);
+    }, [doc, readOnlyMode]);
 
     const loadExcel = async () => {
         try {

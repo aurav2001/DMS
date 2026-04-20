@@ -11,12 +11,14 @@ const {
     updateDocumentMetadata,
     updateDocumentVersion,
     syncLocalFiles,
-    openInDesktop
+    openInDesktop,
+    getPublicDocument
 } = require('../controllers/documents');
 const auth = require('../middleware/auth');
 const upload = require('../middleware/multer');
 const router = express.Router();
 
+router.get('/public/:id', getPublicDocument);
 router.post('/upload', auth, upload.single('file'), uploadDocument);
 router.get('/', auth, getDocuments);
 router.get('/download/:id', auth, downloadDocument);

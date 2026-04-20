@@ -80,6 +80,7 @@ const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
 
   const handleOpenEditor = (readOnly = false) => {
     if (isEditorSupported) {
+      if (!readOnly) toast.success('Initializing Advanced Editor...', { icon: '⚙️' });
       setReadOnlyMode(readOnly);
       setIsEditorOpen(true);
     } else {
