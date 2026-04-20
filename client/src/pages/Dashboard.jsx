@@ -4,6 +4,7 @@ import DashboardLayout from '../components/Dashboard/DashboardLayout';
 import DocumentGrid from '../components/Dashboard/DocumentGrid';
 import Breadcrumbs from '../components/Dashboard/Breadcrumbs';
 import UploadModal from '../components/Dashboard/UploadModal';
+import NewFolderModal from '../components/Dashboard/NewFolderModal';
 import GlobalShareModal from '../components/Dashboard/GlobalShareModal';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
@@ -17,6 +18,7 @@ const Dashboard = () => {
     
     const [loading, setLoading] = useState(true);
     const [isUploadOpen, setIsUploadOpen] = useState(false);
+    const [isNewFolderOpen, setIsNewFolderOpen] = useState(false);
     const [isShareModalOpen, setIsShareModalOpen] = useState(false);
     const [activeTab, setActiveTab] = useState('My Documents');
     const [searchQuery, setSearchQuery] = useState('');
@@ -54,30 +56,12 @@ const Dashboard = () => {
         if (token) fetchContents();
     }, [token, activeTab, searchQuery, currentFolderId]);
 
-    // Handle Folder Creation (Triggered via CustomEvent from Layout)
+    // Listen for New Folder request from Layout
     useEffect(() => {
-        const handleNewFolder = async () => {
-            const name = window.prompt('Enter folder name:');
-            if (!name) return;
-
-            const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-            try {
-                await axios.post(`${API_BASE}/folders`, { 
-                    name, 
-                    parentId: currentFolderId === 'root' ? null : currentFolderId 
-                }, {
-                    headers: { 'x-auth-token': token }
-                });
-                toast.success('Folder created');
-                fetchContents();
-            } catch (err) {
-                toast.error('Failed to create folder');
-            }
-        };
-
-        window.addEventListener('open-new-folder-modal', handleNewFolder);
-        return () => window.removeEventListener('open-new-folder-modal', handleNewFolder);
-    }, [currentFolderId, token]);
+        const handleOpenNewFolder = () => setIsNewFolderOpen(true);
+        window.addEventListener('open-new-folder-modal', handleOpenNewFolder);
+        return () => window.removeEventListener('open-new-folder-modal', handleOpenNewFolder);
+    }, []);
 
     const handleFolderOpen = (id, name) => {
         setCurrentFolderId(id);
@@ -188,6 +172,14 @@ const Dashboard = () => {
                     folderId={currentFolderId === 'root' ? null : currentFolderId}
                     onClose={() => setIsUploadOpen(false)} 
                     onSuccess={fetchContents} 
+                />
+            )}
+
+            {isNewFolderOpen && (
+                <NewFolderModal 
+                    currentFolderId={currentFolderId}
+                    onClose={() => setIsNewFolderOpen(false)}
+                    onSuccess={fetchContents}
                 />
             )}
 

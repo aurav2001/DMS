@@ -186,7 +186,7 @@ const DashboardLayout = ({
                   <>
                     <button 
                       onClick={() => window.dispatchEvent(new CustomEvent('open-new-folder-modal'))}
-                      className="hidden sm:flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-xl font-bold hover:bg-slate-50 transition-all shadow-sm"
+                      className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-xl font-bold hover:bg-slate-50 transition-all shadow-sm"
                     >
                       <Plus className="w-4 h-4 text-primary-500" /> New Folder
                     </button>
