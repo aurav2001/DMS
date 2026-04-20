@@ -178,14 +178,24 @@ const DashboardLayout = ({
           <div className="max-w-7xl mx-auto">
             <div className="flex justify-between items-center mb-8">
               <div>
-                <h1 className="text-2xl font-bold dark:text-white">{activeTab}</h1>
-                <p className="text-sm text-slate-500 dark:text-slate-400">Total {docCount} documents</p>
+                <h1 className="text-2xl font-bold dark:text-white uppercase tracking-tight">{activeTab}</h1>
+                <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Total {docCount} items in selection</p>
               </div>
-              {user?.role !== 'Viewer' && (
-                <button onClick={onUploadClick} className="btn-primary flex items-center gap-2">
-                  <Plus className="w-5 h-5" /> Upload New
-                </button>
-              )}
+              <div className="flex items-center gap-3">
+                {user?.role !== 'Viewer' && (
+                  <>
+                    <button 
+                      onClick={() => window.dispatchEvent(new CustomEvent('open-new-folder-modal'))}
+                      className="hidden sm:flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-xl font-bold hover:bg-slate-50 transition-all shadow-sm"
+                    >
+                      <Plus className="w-4 h-4 text-primary-500" /> New Folder
+                    </button>
+                    <button onClick={onUploadClick} className="btn-primary flex items-center gap-2 px-5 py-2.5 shadow-lg shadow-primary-500/20">
+                      <Plus className="w-5 h-5" /> Upload New
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
             {children}
           </div>

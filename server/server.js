@@ -30,11 +30,13 @@ app.get('/', (req, res) => {
 // Routes
 const authRoutes = require('./routes/auth');
 const documentRoutes = require('./routes/documents');
+const folderRoutes = require('./routes/folders');
 const adminRoutes = require('./routes/admin');
 const publicRoutes = require('./routes/public');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/documents', documentRoutes);
+app.use('/api/folders', folderRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/public', publicRoutes);
 

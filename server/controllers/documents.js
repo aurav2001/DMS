@@ -22,16 +22,18 @@ const uploadDocument = async (req, res) => {
         }
         if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
 
+        const { title, tags, folderId } = req.body;
         const storageType = process.env.STORAGE_TYPE || 'mongodb';
         console.log(`[STORAGE] Uploading document using storage type: ${storageType}`);
         const newDocument = new Document({
-            title: req.body.title || req.file.originalname,
+            title: title || req.file.originalname,
             fileName: req.file.originalname,
             fileType: req.file.mimetype,
             fileSize: req.file.size,
             uploadedBy: req.user.id,
+            folderId: folderId || null,
             storageType,
-            tags: req.body.tags ? JSON.parse(req.body.tags) : [],
+            tags: tags ? (typeof tags === 'string' ? JSON.parse(tags) : tags) : [],
             versions: [{
                 versionNumber: 1,
                 fileUrl: ''
@@ -173,9 +175,14 @@ const downloadDocument = async (req, res) => {
 };
 
 const getDocuments = async (req, res) => {
-    try {
-        const { tab, search } = req.query;
+        const { tab, search, folderId } = req.query;
         let query = { isDeleted: false };
+        
+        // Handle folder filter
+        if (folderId) {
+            query.folderId = folderId === 'root' ? null : folderId;
+        }
+
         switch (tab) {
             case 'Sharing':
             case 'Shared with Me':
@@ -201,6 +208,10 @@ const getDocuments = async (req, res) => {
                 break;
             default:
                 query.isDeleted = false;
+                if (!folderId) {
+                    // In root view, show only docs in root
+                    query.folderId = null;
+                }
                 query.$or = [
                     { uploadedBy: req.user.id },
                     { sharedWith: req.user.id }

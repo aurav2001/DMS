@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 
-const UploadModal = ({ onClose, onSuccess }) => {
+const UploadModal = ({ onClose, onSuccess, folderId }) => {
     const [file, setFile] = useState(null);
     const [uploading, setUploading] = useState(false);
     const [title, setTitle] = useState('');
@@ -27,6 +27,9 @@ const UploadModal = ({ onClose, onSuccess }) => {
         const formData = new FormData();
         formData.append('file', file);
         formData.append('title', title);
+        if (folderId) {
+            formData.append('folderId', folderId);
+        }
 
         try {
             const res = await axios.post(`${API_BASE}/documents/upload`, formData, {

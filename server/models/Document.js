@@ -10,6 +10,7 @@ const documentSchema = new mongoose.Schema({
     fileType: { type: String, required: true },
     fileSize: { type: Number, required: true },
     uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    folderId: { type: mongoose.Schema.Types.ObjectId, ref: 'Folder', default: null },
     tags: [{ type: String }],
     isStarred: { type: Boolean, default: false },
     isDeleted: { type: Boolean, default: false },
