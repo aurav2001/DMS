@@ -175,6 +175,7 @@ const downloadDocument = async (req, res) => {
 };
 
 const getDocuments = async (req, res) => {
+    try {
         const { tab, search, folderId } = req.query;
         let query = { isDeleted: false };
         

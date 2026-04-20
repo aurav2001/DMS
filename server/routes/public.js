@@ -1,5 +1,5 @@
 const express = require('express');
-const { getPublicData, viewPublicDocument } = require('../controllers/public');
+const { getPublicData, viewPublicDocument, sendContactEmail } = require('../controllers/public');
 const router = express.Router();
 
 router.get('/documents', getPublicData);
