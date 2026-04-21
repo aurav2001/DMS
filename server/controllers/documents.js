@@ -1,5 +1,6 @@
 const Document = require('../models/Document');
 const User = require('../models/User');
+const Folder = require('../models/Folder');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
@@ -123,10 +124,25 @@ const downloadDocument = async (req, res) => {
         // Authorization/Permission Check
         const isOwner = document.uploadedBy.toString() === req.user.id.toString();
         const isAdmin = req.user.role === 'Admin';
-        const isShared = document.sharedWith?.some(id => id.toString() === req.user.id.toString());
+        const isSharedDirectly = document.sharedWith?.some(id => id.toString() === req.user.id.toString());
         const isPublic = document.accessLevel === 'public';
 
-        if (!isOwner && !isAdmin && !isShared && !isPublic) {
+        let isSharedViaFolder = false;
+        if (document.folderId) {
+            let currentFolderId = document.folderId;
+            while (currentFolderId) {
+                const folder = await Folder.findById(currentFolderId);
+                if (!folder) break;
+                if (folder.owner.toString() === req.user.id.toString() || 
+                    folder.sharedWith.some(s => s.user.toString() === req.user.id.toString())) {
+                    isSharedViaFolder = true;
+                    break;
+                }
+                currentFolderId = folder.parentId;
+            }
+        }
+
+        if (!isOwner && !isAdmin && !isSharedDirectly && !isSharedViaFolder && !isPublic) {
             return res.status(401).json({ message: 'Not authorized to access this document' });
         }
 
@@ -415,10 +431,25 @@ const viewDocument = async (req, res) => {
         
         const isOwner = document.uploadedBy.toString() === req.user.id.toString();
         const isAdmin = req.user.role === 'Admin';
-        const isShared = document.sharedWith?.some(id => id.toString() === req.user.id.toString());
+        const isSharedDirectly = document.sharedWith?.some(id => id.toString() === req.user.id.toString());
         const isPublic = document.accessLevel === 'public';
 
-        if (!isOwner && !isAdmin && !isShared && !isPublic) {
+        let isSharedViaFolder = false;
+        if (document.folderId) {
+            let currentFolderId = document.folderId;
+            while (currentFolderId) {
+                const folder = await Folder.findById(currentFolderId);
+                if (!folder) break;
+                if (folder.owner.toString() === req.user.id.toString() || 
+                    folder.sharedWith.some(s => s.user.toString() === req.user.id.toString())) {
+                    isSharedViaFolder = true;
+                    break;
+                }
+                currentFolderId = folder.parentId;
+            }
+        }
+
+        if (!isOwner && !isAdmin && !isSharedDirectly && !isSharedViaFolder && !isPublic) {
             return res.status(401).json({ message: 'Not authorized to access this document' });
         }
         
@@ -466,12 +497,28 @@ const updateDocumentMetadata = async (req, res) => {
         const isOwner = document.uploadedBy.toString() === req.user.id;
         const isAdmin = req.user.role === 'Admin';
         const isEditor = req.user.role === 'Editor';
-        const isShared = document.sharedWith?.includes(req.user.id);
+        const isSharedDirectly = document.sharedWith?.some(id => id.toString() === req.user.id.toString());
         
-        // Admins and Owners can always edit. 
-        // Editors can edit if it's their doc OR if it's shared with them and document level permission doesn't explicitly block them 
-        // (but usually Editor role should imply editing if they have access).
-        const canEdit = isOwner || isAdmin || (isEditor && isShared) || document.permissions?.canEdit;
+        let isSharedViaFolder = false;
+        let folderAccess = 'view';
+        if (document.folderId) {
+            let currentFolderId = document.folderId;
+            while (currentFolderId) {
+                const folder = await Folder.findById(currentFolderId);
+                if (!folder) break;
+                const share = folder.sharedWith.find(s => s.user.toString() === req.user.id.toString());
+                if (folder.owner.toString() === req.user.id.toString() || share) {
+                    isSharedViaFolder = true;
+                    if (folder.owner.toString() === req.user.id.toString() || share.access === 'edit') {
+                        folderAccess = 'edit';
+                    }
+                    break;
+                }
+                currentFolderId = folder.parentId;
+            }
+        }
+
+        const canEdit = isOwner || isAdmin || (isEditor && (isSharedDirectly || folderAccess === 'edit')) || document.permissions?.canEdit;
 
         if (!canEdit) {
             return res.status(403).json({ message: 'No permission to edit metadata' });
@@ -509,9 +556,28 @@ const updateDocumentVersion = async (req, res) => {
         const isOwner = document.uploadedBy.toString() === req.user.id;
         const isAdmin = req.user.role === 'Admin';
         const isEditor = req.user.role === 'Editor';
-        const isShared = document.sharedWith?.includes(req.user.id);
+        const isSharedDirectly = document.sharedWith?.some(id => id.toString() === req.user.id.toString());
         
-        const canEdit = isOwner || isAdmin || (isEditor && isShared) || document.permissions?.canEdit;
+        let isSharedViaFolder = false;
+        let folderAccess = 'view';
+        if (document.folderId) {
+            let currentFolderId = document.folderId;
+            while (currentFolderId) {
+                const folder = await Folder.findById(currentFolderId);
+                if (!folder) break;
+                const share = folder.sharedWith.find(s => s.user.toString() === req.user.id.toString());
+                if (folder.owner.toString() === req.user.id.toString() || share) {
+                    isSharedViaFolder = true;
+                    if (folder.owner.toString() === req.user.id.toString() || share.access === 'edit') {
+                        folderAccess = 'edit';
+                    }
+                    break;
+                }
+                currentFolderId = folder.parentId;
+            }
+        }
+
+        const canEdit = isOwner || isAdmin || (isEditor && (isSharedDirectly || folderAccess === 'edit')) || document.permissions?.canEdit;
 
         if (!canEdit) {
             return res.status(403).json({ message: 'No permission to edit content' });

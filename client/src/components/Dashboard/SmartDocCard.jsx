@@ -370,7 +370,7 @@ const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
 
               {user?.role !== 'Viewer' && (isOwner || doc.permissions?.canEdit || isAdmin) && (
                 <button 
-                  onClick={() => { onShare(doc._id); setShowOptions(false); }}
+                  onClick={() => { onShare(doc._id, doc.title); setShowOptions(false); }}
                   className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
                 >
                   <Share2 className="w-4 h-4" /> Share Access

@@ -24,7 +24,7 @@ const FolderCard = ({ folder, onOpen, onShare, onDelete }) => {
                 
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button 
-                        onClick={(e) => { e.stopPropagation(); onShare(folder._id); }}
+                        onClick={(e) => { e.stopPropagation(); onShare(folder._id, folder.name); }}
                         className="p-1.5 hover:bg-indigo-50 text-indigo-600 rounded-lg"
                     >
                         <Share2 className="w-4 h-4" />

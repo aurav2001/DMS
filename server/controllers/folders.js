@@ -22,26 +22,49 @@ exports.createFolder = async (req, res) => {
 exports.getFolderContents = async (req, res) => {
     try {
         const parentId = req.params.folderId === 'root' ? null : req.params.folderId;
-        
-        // Find folders owned by user OR shared with user in this parent
-        const folders = await Folder.find({
-            parentId,
-            $or: [
-                { owner: req.user.id },
-                { 'sharedWith.user': req.user.id }
-            ],
-            isDeleted: false
-        });
+        const userId = req.user.id;
 
-        // Find documents in this folder
-        const documents = await Document.find({
-            folderId: parentId,
-            $or: [
-                { uploadedBy: req.user.id },
-                { sharedWith: req.user.id }
-            ],
-            isDeleted: false
-        });
+        let hasAccessToParent = false;
+        if (!parentId) {
+            hasAccessToParent = true; // Root is always accessible (filtered below)
+        } else {
+            // Check if user is owner or shared on this specific folder or ANY parent folder
+            let currentId = parentId;
+            while (currentId) {
+                const folder = await Folder.findById(currentId);
+                if (!folder) break;
+                if (folder.owner.toString() === userId.toString() || 
+                    folder.sharedWith.some(s => s.user.toString() === userId.toString())) {
+                    hasAccessToParent = true;
+                    break;
+                }
+                currentId = folder.parentId;
+            }
+        }
+
+        let folderQuery = { parentId, isDeleted: false };
+        let docQuery = { folderId: parentId, isDeleted: false };
+
+        if (!hasAccessToParent) {
+            return res.status(403).json({ message: 'Access denied to this folder' });
+        }
+
+        // If at root, we must filter items that are specifically owned/shared
+        if (!parentId) {
+            folderQuery.$or = [
+                { owner: userId },
+                { 'sharedWith.user': userId }
+            ];
+            docQuery.$or = [
+                { uploadedBy: userId },
+                { sharedWith: userId }
+            ];
+        } 
+        // If inside an accessible folder, we show everything (cascading)
+        // Note: For root view, the logic above ensures only top-level shared items appear.
+
+        const folders = await Folder.find(folderQuery);
+        const documents = await Document.find(docQuery);
 
         res.json({ folders, documents });
     } catch (err) {

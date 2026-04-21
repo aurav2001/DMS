@@ -5,7 +5,7 @@ import DocumentGrid from '../components/Dashboard/DocumentGrid';
 import Breadcrumbs from '../components/Dashboard/Breadcrumbs';
 import UploadModal from '../components/Dashboard/UploadModal';
 import NewFolderModal from '../components/Dashboard/NewFolderModal';
-import GlobalShareModal from '../components/Dashboard/GlobalShareModal';
+import ShareModal from '../components/Dashboard/ShareModal';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 import { FolderPlus, Share2, Trash2 } from 'lucide-react';
@@ -20,6 +20,7 @@ const Dashboard = () => {
     const [isUploadOpen, setIsUploadOpen] = useState(false);
     const [isNewFolderOpen, setIsNewFolderOpen] = useState(false);
     const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+    const [shareData, setShareData] = useState(null); // { id, type, name }
     const [activeTab, setActiveTab] = useState('My Documents');
     const [searchQuery, setSearchQuery] = useState('');
     const { token } = useAuth();
@@ -78,22 +79,12 @@ const Dashboard = () => {
         }
     };
 
-    const handleFolderShare = async (id) => {
-        const email = window.prompt('Share with (Email):');
-        if (!email) return;
-        const accessArr = ['view', 'edit'];
-        const access = window.prompt('Access level (view/edit):', 'view');
-        if (!accessArr.includes(access)) return toast.error('Invalid access level');
+    const handleFolderShare = (id, name) => {
+        setShareData({ id, name, type: 'folder' });
+    };
 
-        const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-        try {
-            await axios.post(`${API_BASE}/folders/${id}/share`, { email, access }, {
-                headers: { 'x-auth-token': token }
-            });
-            toast.success(`Shared with ${email}`);
-        } catch (err) {
-            toast.error(err.response?.data?.message || 'Sharing failed');
-        }
+    const handleDocShare = (id, name) => {
+        setShareData({ id, name, type: 'document' });
     };
 
     // Document Handlers
@@ -157,7 +148,7 @@ const Dashboard = () => {
                     onFolderShare={handleFolderShare}
                     onStar={handleDocStar}
                     onDelete={handleDocDelete}
-                    onShare={(id) => {}} // Legacy simple share
+                    onShare={handleDocShare}
                 />
             )}
             
@@ -180,6 +171,17 @@ const Dashboard = () => {
             {isShareModalOpen && (
                 <GlobalShareModal 
                     onClose={() => setIsShareModalOpen(false)}
+                    onSuccess={fetchContents}
+                />
+            )}
+
+            {shareData && (
+                <ShareModal 
+                    isOpen={!!shareData}
+                    onClose={() => setShareData(null)}
+                    itemId={shareData.id}
+                    itemName={shareData.name}
+                    itemType={shareData.type}
                     onSuccess={fetchContents}
                 />
             )}
