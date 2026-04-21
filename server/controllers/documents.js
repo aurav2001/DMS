@@ -6,6 +6,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { uploadToSFTP, downloadFromSFTP } = require('../utils/sftp');
 const cloudinary = require('cloudinary').v2;
+const sendEmail = require('../utils/email');
 
 // Configure Cloudinary
 if (process.env.STORAGE_TYPE === 'cloudinary') {
@@ -398,6 +399,23 @@ const shareDocument = async (req, res) => {
         if (!document.sharedWith.includes(targetUser._id)) {
             document.sharedWith.push(targetUser._id);
             await document.save();
+
+            // Send Email Notification
+            await sendEmail({
+                email: targetUser.email,
+                subject: 'DocVault - A document has been shared with you',
+                html: `
+                    <div style="font-family: sans-serif; padding: 20px; color: #333;">
+                        <h2 style="color: #0284c7;">Document Shared</h2>
+                        <p>Hello <b>${targetUser.name}</b>,</p>
+                        <p><b>${req.user.name}</b> has shared a document with you: <b style="color: #0284c7;">${document.title}</b>.</p>
+                        <p>You can view this document in your "Shared with Me" tab under the dashboard.</p>
+                        <p><a href="${process.env.VITE_APP_URL || '#'}/dashboard" style="display: inline-block; padding: 10px 20px; background: #0284c7; color: white; text-decoration: none; border-radius: 5px;">View Document</a></p>
+                        <br/>
+                        <p>Best regards,<br/>DocVault Team</p>
+                    </div>
+                `
+            });
         }
         res.json({ message: `Document shared with ${targetUser.name}` });
     } catch (err) {

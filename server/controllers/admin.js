@@ -1,6 +1,7 @@
 const User = require('../models/User');
 const Document = require('../models/Document');
 const bcrypt = require('bcryptjs');
+const sendEmail = require('../utils/email');
 
 // Get all users
 const getAllUsers = async (req, res) => {
@@ -22,6 +23,23 @@ const updateUserRole = async (req, res) => {
             { new: true }
         ).select('-password');
         if (!user) return res.status(404).json({ message: 'User not found' });
+
+        // Send Email Notification
+        await sendEmail({
+            email: user.email,
+            subject: 'DocVault - User Role Updated',
+            html: `
+                <div style="font-family: sans-serif; padding: 20px; color: #333;">
+                    <h2 style="color: #0284c7;">Role Updated</h2>
+                    <p>Hello <b>${user.name}</b>,</p>
+                    <p>Your account role has been updated to: <b style="color: #0284c7;">${role}</b>.</p>
+                    <p>If you have any questions, please contact your administrator.</p>
+                    <br/>
+                    <p>Best regards,<br/>DocVault Team</p>
+                </div>
+            `
+        });
+
         res.json(user);
     } catch (err) {
         res.status(500).json({ message: err.message });
@@ -113,6 +131,28 @@ const createUser = async (req, res) => {
         
         await newUser.save();
         
+        // Send Welcome Email
+        await sendEmail({
+            email: newUser.email,
+            subject: 'Welcome to DocVault - Account Created',
+            html: `
+                <div style="font-family: sans-serif; padding: 20px; color: #333;">
+                    <h2 style="color: #0284c7;">Welcome to DocVault!</h2>
+                    <p>Hello <b>${name}</b>,</p>
+                    <p>Admin has created an account for you with the following details:</p>
+                    <ul style="background: #f0f9ff; padding: 15px; border-radius: 10px; list-style: none;">
+                        <li><b>Email:</b> ${email}</li>
+                        <li><b>Temporary Password:</b> ${password}</li>
+                        <li><b>Role:</b> ${role || 'Viewer'}</li>
+                    </ul>
+                    <p>Please login and change your password for security.</p>
+                    <p><a href="${process.env.VITE_APP_URL || '#'}/login" style="display: inline-block; padding: 10px 20px; background: #0284c7; color: white; text-decoration: none; border-radius: 5px;">Login to Your Account</a></p>
+                    <br/>
+                    <p>Best regards,<br/>DocVault Team</p>
+                </div>
+            `
+        });
+
         const createdUser = newUser.toObject();
         delete createdUser.password;
         res.status(201).json(createdUser);
