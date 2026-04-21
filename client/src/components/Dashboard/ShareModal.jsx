@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Search, User, Mail, ChevronDown, Check, Shield, Lock } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
+import { API_BASE } from '../../utils/api';
 
 const ShareModal = ({ isOpen, onClose, itemName, itemType, itemId, onSuccess }) => {
     const [search, setSearch] = useState('');
@@ -16,7 +17,6 @@ const ShareModal = ({ isOpen, onClose, itemName, itemType, itemId, onSuccess }) 
     const dropdownRef = useRef(null);
     const { token } = useAuth();
 
-    const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
     useEffect(() => {
         if (isOpen && token) {

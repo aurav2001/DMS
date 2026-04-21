@@ -3,6 +3,7 @@ import { X, FolderPlus, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import axios from 'axios';
 import toast from 'react-hot-toast';
+import { API_BASE } from '../../utils/api';
 
 const NewFolderModal = ({ onClose, onSuccess, currentFolderId }) => {
     const [folderName, setFolderName] = useState('');
@@ -12,7 +13,6 @@ const NewFolderModal = ({ onClose, onSuccess, currentFolderId }) => {
         e.preventDefault();
         if (!folderName.trim()) return toast.error('Please enter a folder name');
 
-        const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
         const token = localStorage.getItem('token');
         
         try {

@@ -8,7 +8,7 @@ import SpreadsheetEngine from '../Dashboard/SpreadsheetEngine';
 import OfficeViewer from '../Dashboard/OfficeViewer';
 import { getDocType, getIconColor } from '../../utils/fileUtils';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+import { API_BASE } from '../../utils/api';
 
 const PublicDocuments = () => {
   const [documents, setDocuments] = useState([]);

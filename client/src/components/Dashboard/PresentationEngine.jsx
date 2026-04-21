@@ -5,6 +5,7 @@ import PptxGenJS from 'pptxgenjs';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { getDocType } from '../../utils/fileUtils';
+import { API_BASE } from '../../utils/api';
 
 const PPTEditor = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
     const [loading, setLoading] = useState(true);
@@ -19,7 +20,6 @@ const PPTEditor = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
     const loadPPT = async () => {
         try {
             setLoading(true);
-            const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
             const token = localStorage.getItem('token');
             const res = await axios.get(`${API_BASE}/documents/download/${doc._id}`, {
                 responseType: 'arraybuffer',
@@ -72,7 +72,6 @@ const PPTEditor = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
     const handleSave = async () => {
         try {
             setSaving(true);
-            const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
             
             // Use PptxGenJS to recreate the presentation with the new text
             const pptx = new PptxGenJS();
@@ -113,7 +112,6 @@ const PPTEditor = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
 
     const openInDesktop = async () => {
         try {
-            const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
             const token = localStorage.getItem('token');
             const res = await axios.post(`${API_BASE}/documents/${doc._id}/open-in-desktop`, {}, {
                 headers: { 'x-auth-token': token }

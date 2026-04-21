@@ -16,8 +16,8 @@ import ExcelEditor from '../components/Dashboard/SpreadsheetEngine';
 import PPTEditor from '../components/Dashboard/PresentationEngine';
 import OfficeViewer from '../components/Dashboard/OfficeViewer';
 import { getDocType } from '../utils/fileUtils';
+import { API_BASE } from '../utils/api';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 const AdminDashboard = () => {
   const { user, logout } = useAuth();

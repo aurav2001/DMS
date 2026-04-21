@@ -4,6 +4,7 @@ import * as XLSX from 'xlsx';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { getDocType } from '../../utils/fileUtils';
+import { API_BASE } from '../../utils/api';
 
 const ExcelEditor = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
     const [loading, setLoading] = useState(true);
@@ -21,7 +22,6 @@ const ExcelEditor = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
     const loadExcel = async () => {
         try {
             setLoading(true);
-            const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
             const token = localStorage.getItem('token');
             const res = await axios.get(`${API_BASE}/documents/download/${doc._id}`, {
                 responseType: 'arraybuffer',
@@ -64,7 +64,6 @@ const ExcelEditor = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
     const handleSave = async () => {
         try {
             setSaving(true);
-            const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
             const newSheet = XLSX.utils.aoa_to_sheet(data);
             workbook.Sheets[activeSheet] = newSheet;
             const wbOut = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
@@ -89,7 +88,6 @@ const ExcelEditor = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
 
     const openInDesktop = async () => {
         try {
-            const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
             const token = localStorage.getItem('token');
             const res = await axios.post(`${API_BASE}/documents/${doc._id}/open-in-desktop`, {}, {
                 headers: { 'x-auth-token': token }

@@ -3,8 +3,8 @@ import { Mail, Phone, MapPin, Send, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import axios from 'axios';
 import toast from 'react-hot-toast';
+import { API_BASE } from '../../utils/api';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 const Contact = () => {
   const [formData, setFormData] = useState({

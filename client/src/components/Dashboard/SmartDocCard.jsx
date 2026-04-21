@@ -34,6 +34,7 @@ import ExcelEditor from './SpreadsheetEngine';
 import PPTEditor from './PresentationEngine';
 import OfficeViewer from './OfficeViewer';
 import { getDocType, getIconColor, getBgColor } from '../../utils/fileUtils';
+import { API_BASE } from '../../utils/api';
 
 const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
   const [showOptions, setShowOptions] = useState(false);
@@ -179,11 +180,14 @@ const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
       const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
       const token = localStorage.getItem('token');
       
-      await axios.post(`${API_BASE}/documents/${doc._id}/open-in-desktop`, {}, {
+      const response = await axios.post(`${API_BASE}/documents/${doc._id}/open-in-desktop`, {}, {
         headers: { 'x-auth-token': token }
       });
       
-      toast.success(`Opening ${doc.title} in Desktop...`, { icon: '🚀' });
+      if (response.data.uri) {
+        window.location.href = response.data.uri;
+        toast.success(`Opening ${doc.title} in Desktop...`, { icon: '🚀' });
+      }
     } catch (err) {
       console.error('Desktop Open Error:', err);
       toast.error(err.response?.data?.message || 'Failed to open Desktop App');

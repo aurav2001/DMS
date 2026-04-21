@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, User, Mail, Lock, Shield, Loader2 } from 'lucide-react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
+import { API_BASE } from '../utils/api';
 
 const AddUserModal = ({ onClose, onSuccess }) => {
     const [loading, setLoading] = useState(false);
@@ -14,7 +15,6 @@ const AddUserModal = ({ onClose, onSuccess }) => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
         
         try {
             setLoading(true);

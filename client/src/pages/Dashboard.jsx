@@ -9,6 +9,7 @@ import ShareModal from '../components/Dashboard/ShareModal';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 import { FolderPlus, Share2, Trash2 } from 'lucide-react';
+import { API_BASE } from '../utils/api';
 
 const Dashboard = () => {
     const [documents, setDocuments] = useState([]);
@@ -26,7 +27,6 @@ const Dashboard = () => {
     const { token } = useAuth();
 
     const fetchContents = async () => {
-        const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
         try {
             setLoading(true);
             // Fetch Folders and Documents for the current view
@@ -67,7 +67,6 @@ const Dashboard = () => {
 
     const handleFolderDelete = async (id) => {
         if (!window.confirm('Delete this folder and all its items?')) return;
-        const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
         try {
             await axios.delete(`${API_BASE}/folders/${id}`, {
                 headers: { 'x-auth-token': token }
@@ -89,7 +88,6 @@ const Dashboard = () => {
 
     // Document Handlers
     const handleDocStar = async (id) => {
-        const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
         try {
             await axios.patch(`${API_BASE}/documents/${id}/star`, {}, { headers: { 'x-auth-token': token } });
             fetchContents();
@@ -98,7 +96,6 @@ const Dashboard = () => {
 
     const handleDocDelete = async (id) => {
         if (!window.confirm('Delete this document?')) return;
-        const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
         try {
             await axios.delete(`${API_BASE}/documents/${id}`, { headers: { 'x-auth-token': token } });
             toast.success('Moved to trash');
@@ -107,7 +104,6 @@ const Dashboard = () => {
     };
 
     const handleSync = async () => {
-        const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
         try {
             setLoading(true);
             const res = await axios.post(`${API_BASE}/documents/sync`, {}, { headers: { 'x-auth-token': token } });

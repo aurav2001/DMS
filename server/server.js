@@ -14,9 +14,10 @@ app.set('trust proxy', 1); // Trust first proxy for correct protocol detection o
 // Middleware
 app.use(cors({
     origin: '*', 
-    methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'x-auth-token', 'Authorization'],
-    credentials: true
+    methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS', 'PROPFIND', 'LOCK', 'UNLOCK'],
+    allowedHeaders: ['Content-Type', 'x-auth-token', 'Authorization', 'Depth', 'Destination', 'Overwrite', 'If', 'If-Match', 'Lock-Token', 'Timeout'],
+    credentials: true,
+    exposedHeaders: ['Lock-Token', 'ETag', 'Content-Disposition']
 }));
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));

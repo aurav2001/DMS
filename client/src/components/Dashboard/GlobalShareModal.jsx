@@ -3,8 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Search, FileText, Send, UserCheck, AlertCircle, FileImage, FileVideo, FileAudio, Archive, File, FileCode } from 'lucide-react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
+import { API_BASE } from '../../utils/api';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 const GlobalShareModal = ({ onClose, onSuccess }) => {
     const [step, setStep] = useState(1); // 1: Select File, 2: Enter Email

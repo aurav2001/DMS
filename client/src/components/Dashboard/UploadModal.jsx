@@ -4,6 +4,7 @@ import { X, Upload, File, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import toast from 'react-hot-toast';
+import { API_BASE } from '../../utils/api';
 
 const UploadModal = ({ onClose, onSuccess, folderId }) => {
     const [file, setFile] = useState(null);
@@ -24,7 +25,6 @@ const UploadModal = ({ onClose, onSuccess, folderId }) => {
 
     const handleUpload = async () => {
         if (!file) return;
-        const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
         const token = localStorage.getItem('token');
         setUploading(true);
 
