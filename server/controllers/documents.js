@@ -17,6 +17,67 @@ if (process.env.STORAGE_TYPE === 'cloudinary') {
     });
 }
 
+// HELPER: Handle versioning when uploading an existing file
+const handleVersionUpdateFromUpload = async (req, res, document) => {
+    try {
+        const storageType = document.storageType || process.env.STORAGE_TYPE || 'mongodb';
+        const currentVersionNumber = document.versions.length;
+        
+        // Archive current state
+        const archiveVersion = {
+            versionNumber: currentVersionNumber,
+            fileUrl: document.fileUrl,
+            storagePath: document.storagePath,
+            fileData: document.fileData,
+            updatedBy: req.user.id,
+            updatedAt: Date.now()
+        };
+        document.versions.push(archiveVersion);
+
+        const newVersionNumber = currentVersionNumber + 1;
+
+        if (storageType === 'local') {
+            const fileName = `v${newVersionNumber}-${Date.now()}-${req.file.originalname}`;
+            const storageDir = process.env.LOCAL_STORAGE_PATH || path.join(__dirname, '../uploads');
+            if (!fs.existsSync(storageDir)) fs.mkdirSync(storageDir, { recursive: true });
+            fs.writeFileSync(path.join(storageDir, fileName), req.file.buffer);
+            document.storagePath = fileName;
+        } else if (storageType === 'sftp') {
+            const fileName = `v${newVersionNumber}-${Date.now()}-${req.file.originalname}`;
+            const remotePath = `${process.env.SFTP_BASE_PATH || '/uploads'}/${fileName}`;
+            await uploadToSFTP(req.file.buffer, remotePath);
+            document.storagePath = remotePath;
+        } else if (storageType === 'cloudinary') {
+            const uploadPromise = new Promise((resolve, reject) => {
+                const uploadStream = cloudinary.uploader.upload_stream(
+                    { resource_type: 'raw', folder: 'docvault', public_id: `${Date.now()}-v${newVersionNumber}-${req.file.originalname}` },
+                    (error, result) => { if (error) reject(error); else resolve(result); }
+                );
+                uploadStream.end(req.file.buffer);
+            });
+            const result = await uploadPromise;
+            document.fileUrl = result.secure_url;
+            document.storagePath = result.public_id;
+        } else {
+            document.fileData = req.file.buffer;
+        }
+
+        document.fileSize = req.file.size;
+        document.updatedAt = Date.now();
+        
+        // Ensure main fileUrl is correct for Vercel/Proxy if not cloudinary
+        if (storageType !== 'cloudinary') {
+            document.fileUrl = `/api/documents/download/${document._id}?v=${Date.now()}`;
+        }
+
+        await document.save();
+        res.json({ message: 'File updated to new version', document, version: newVersionNumber });
+    } catch (err) {
+        console.error('Helper Version Update Error:', err);
+        res.status(500).json({ message: err.message });
+    }
+};
+
 const uploadDocument = async (req, res) => {
     try {
         if (req.user.role === 'Viewer') {
@@ -25,6 +86,20 @@ const uploadDocument = async (req, res) => {
         if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
 
         const { title, tags, folderId } = req.body;
+
+        // SMART OVERWRITE DETECTION
+        // If a file with same name exists in this folder for this user, treat as version update
+        const existingDoc = await Document.findOne({
+            fileName: req.file.originalname,
+            folderId: (folderId === 'root' || !folderId) ? null : folderId,
+            uploadedBy: req.user.id,
+            isDeleted: false
+        });
+
+        if (existingDoc) {
+            console.log(`[UPLOAD] Existing file found: ${existingDoc.fileName}. Updating to new version.`);
+            return handleVersionUpdateFromUpload(req, res, existingDoc);
+        }
         const storageType = process.env.STORAGE_TYPE || 'mongodb';
         console.log(`[STORAGE] Uploading document using storage type: ${storageType}`);
         const newDocument = new Document({

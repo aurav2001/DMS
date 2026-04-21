@@ -271,16 +271,24 @@ const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
                 </form>
               ) : (
                 <>
-                  <h3 className="font-bold text-slate-900 dark:text-white truncate" title={doc.title}>
+                  <h3 className="font-bold text-slate-900 dark:text-white truncate flex items-center gap-1.5" title={doc.title}>
                     {doc.title}
+                    {doc.versions && doc.versions.length > 0 && (
+                      <span className="bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 text-[9px] px-1.5 py-0.5 rounded-full border border-amber-200 dark:border-amber-800 flex items-center gap-0.5 font-black shrink-0">
+                        V{doc.versions.length + 1}
+                      </span>
+                    )}
                   </h3>
                   {doc.isStarred && <Star className="w-3.5 h-3.5 text-yellow-400 fill-current flex-shrink-0" />}
                 </>
               )}
             </div>
-            <p className="text-[10px] text-slate-400 font-medium uppercase tracking-tight">
-              {isOwner ? 'Your File' : `Shared by ${doc.uploadedBy?.name || 'Admin'}`}
-            </p>
+              <p className="text-[10px] text-slate-400 font-medium uppercase tracking-tight flex items-center gap-2">
+                <span>{isOwner ? 'Your File' : `Shared by ${doc.uploadedBy?.name || 'Admin'}`}</span>
+                {doc.versions && doc.versions.length > 0 && (
+                  <span className="text-amber-500 font-bold">• EDIT VERSION {doc.versions.length + 1}</span>
+                )}
+              </p>
           </div>
 
           <div className="flex flex-wrap gap-1.5 mt-2">
@@ -308,15 +316,17 @@ const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
               <button 
                 onClick={(e) => { e.stopPropagation(); handleOpenEditor(); }}
                 className="cursor-pointer hover:bg-amber-100 hover:scale-105 transition-all text-[9px] px-2 py-0.5 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 rounded-md font-bold flex items-center gap-1 border border-amber-100 dark:border-amber-800/50"
+                title="Quick editing in browser (formatting might vary)"
               >
-                {isEditorSupported ? <FileEdit className="w-2.5 h-2.5" /> : <Edit3 className="w-2.5 h-2.5" />} EDIT
+                {isEditorSupported ? <FileEdit className="w-2.5 h-2.5" /> : <Edit3 className="w-2.5 h-2.5" />} WEB EDIT
               </button>
             )}
             <button 
               onClick={handleOpenDesktop}
-              className="cursor-pointer hover:bg-indigo-100 hover:scale-105 transition-all text-[9px] px-2 py-0.5 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-md font-bold flex items-center gap-1 border border-indigo-100 dark:border-indigo-800/50"
+              className="cursor-pointer hover:bg-indigo-100 hover:scale-105 transition-all text-[9px] px-2 py-0.5 bg-indigo-600 text-white rounded-md font-bold flex items-center gap-1 border border-indigo-700 shadow-md"
+              title="Open in real Office 365 (Word/Excel/PPT) for 100% accurate formatting"
             >
-              <Monitor className="w-2.5 h-2.5" /> OPEN APP
+              <Monitor className="w-2.5 h-2.5" /> OPEN IN OFFICE
             </button>
           </div>
 
@@ -388,6 +398,35 @@ const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
                 >
                   <Trash className="w-4 h-4" /> Delete Permanently
                 </button>
+              )}
+
+              {/* Version History Section */}
+              {doc.versions && doc.versions.length > 0 && (
+                <div className="mt-2 pt-2 border-t dark:border-slate-700 px-4">
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Previous Versions</p>
+                  <div className="space-y-1 max-h-32 overflow-y-auto pr-1">
+                    {doc.versions.slice().reverse().map((v, i) => (
+                      <div 
+                        key={i}
+                        className="flex items-center justify-between p-1.5 rounded-lg bg-slate-50 dark:bg-slate-700/50 text-[10px] border border-slate-100 dark:border-slate-600"
+                      >
+                        <div className="flex flex-col">
+                          <span className="font-bold text-slate-700 dark:text-slate-200">Version {v.versionNumber}</span>
+                          <span className="text-[8px] text-slate-400">{new Date(v.updatedAt).toLocaleDateString()}</span>
+                        </div>
+                        <a 
+                          href={`${API_BASE}/documents/${doc._id}/version/${v.versionNumber}?token=${localStorage.getItem('token')}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-1 text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded transition-all"
+                          title="Download this version"
+                        >
+                          <Download className="w-3 h-3" />
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               )}
             </motion.div>
           )}

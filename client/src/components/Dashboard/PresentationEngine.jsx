@@ -63,6 +63,21 @@ const PPTEditor = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
         }
     };
 
+    const openInDesktop = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            const res = await axios.post(`${API_BASE}/documents/${doc._id}/open-in-desktop`, {}, {
+                headers: { 'x-auth-token': token }
+            });
+            if (res.data.uri) {
+                toast.success('Opening in PowerPoint Desktop...', { icon: '🚀' });
+                window.location.href = res.data.uri;
+            }
+        } catch (err) {
+            toast.error('Failed to open PowerPoint App');
+        }
+    };
+
     const handleTextChange = (value) => {
         const newSlides = [...slides];
         newSlides[activeSlideIndex].text = value;
@@ -149,6 +164,15 @@ const PPTEditor = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
                 </div>
 
                 <div className="flex items-center gap-2">
+                    <button 
+                        onClick={openInDesktop}
+                        className="hidden md:flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-xs font-bold rounded-full border border-white/20 transition-all active:scale-95 group"
+                    >
+                        <Monitor className="w-4 h-4 group-hover:animate-pulse" />
+                        <span>OPEN IN POWERPOINT APP</span>
+                        <ExternalLink className="w-3 h-3 opacity-50" />
+                    </button>
+
                     {!readOnlyMode && (
                         <button 
                             onClick={handleSave}

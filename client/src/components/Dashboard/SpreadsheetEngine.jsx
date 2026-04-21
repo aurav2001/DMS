@@ -61,6 +61,21 @@ const ExcelEditor = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
         setData(newData);
     };
 
+    const openInDesktop = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            const res = await axios.post(`${API_BASE}/documents/${doc._id}/open-in-desktop`, {}, {
+                headers: { 'x-auth-token': token }
+            });
+            if (res.data.uri) {
+                toast.success('Opening in Excel Desktop...', { icon: '🚀' });
+                window.location.href = res.data.uri;
+            }
+        } catch (err) {
+            toast.error('Failed to open Excel App');
+        }
+    };
+
     const handleSave = async () => {
         try {
             setSaving(true);
@@ -115,6 +130,15 @@ const ExcelEditor = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
+                        <button 
+                            onClick={openInDesktop}
+                            className="hidden md:flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-lg transition-all active:scale-95 group"
+                        >
+                            <Monitor className="w-4 h-4 text-[#1d6f42] group-hover:animate-bounce" />
+                            <span>OPEN IN EXCEL APP</span>
+                            <ExternalLink className="w-3 h-3 opacity-50" />
+                        </button>
+
                         {!readOnlyMode && (
                             <button 
                                 onClick={handleSave} 
@@ -126,7 +150,7 @@ const ExcelEditor = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
                                 ) : (
                                     <Save className="w-4 h-4 group-hover:scale-110 transition-transform" />
                                 )}
-                                {saving ? 'SAVING TO CLOUD...' : 'SAVE TO SERVER'}
+                                {saving ? 'SAVING...' : 'SAVE TO SERVER'}
                             </button>
                         )}
                         

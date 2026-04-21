@@ -815,7 +815,10 @@ const MSWordOnline = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
                         <div>
                             <h2 className="text-white font-bold text-sm tracking-tight">{doc.title}</h2>
                             <div className="flex items-center gap-2 mt-0.5">
-                                <span className="bg-white/20 text-white text-[8px] px-1.5 py-0.5 rounded font-black uppercase tracking-wider border border-white/10">Premium High-Fidelity Editor</span>
+                                <span className="bg-white/20 text-white text-[8px] px-1.5 py-0.5 rounded font-black uppercase tracking-wider border border-white/10">Quick Web Editor</span>
+                                <span className="bg-amber-400/20 text-amber-200 text-[8px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider border border-amber-400/20 flex items-center gap-1">
+                                    <Shield className="w-2.5 h-2.5" /> Low fidelity mode
+                                </span>
                                 <span className="text-blue-100 text-[9px] font-medium opacity-80 flex items-center gap-1">
                                     <Check className="w-3 h-3" /> Auto-Sync Active
                                 </span>
@@ -824,6 +827,16 @@ const MSWordOnline = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
                     </div>
 
                     <div className="flex items-center gap-2">
+                        <button 
+                            onClick={openInDesktop}
+                            className="hidden md:flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-xs font-bold rounded-lg border border-white/20 transition-all active:scale-95 group"
+                            title="Open in real Microsoft Word (Desktop)"
+                        >
+                            <Monitor className="w-4 h-4 group-hover:animate-pulse" />
+                            <span>OPEN IN OFFICE 365 APP</span>
+                            <ExternalLink className="w-3 h-3 opacity-50" />
+                        </button>
+
                         {!readOnlyMode && (
                             <button 
                                 onClick={handleSave} 
@@ -835,7 +848,7 @@ const MSWordOnline = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
                                 ) : (
                                     <Save className="w-4 h-4 group-hover:scale-110 transition-transform" />
                                 )}
-                                {saving ? 'SAVING TO CLOUD...' : 'SAVE TO SERVER'}
+                                {saving ? 'SAVING...' : 'SAVE TO SERVER'}
                             </button>
                         )}
                         
@@ -847,6 +860,23 @@ const MSWordOnline = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
                         </button>
                     </div>
                 </div>
+
+                {/* Contextual Warning Banner */}
+                {!readOnlyMode && mode === 'word' && (
+                    <div className="bg-amber-50 border-b border-amber-100 px-4 py-1.5 flex items-center justify-between text-[11px]">
+                        <div className="flex items-center gap-2 text-amber-800">
+                            <Shield className="w-3 h-3" />
+                            <span className="font-bold uppercase tracking-tight">Format Warning:</span>
+                            <span>Browser editor may not show all complex formatting (tables/headers).</span>
+                        </div>
+                        <button 
+                            onClick={openInDesktop}
+                            className="bg-amber-600 hover:bg-amber-700 text-white px-3 py-0.5 rounded font-black uppercase tracking-tighter transition-all flex items-center gap-1.5"
+                        >
+                            <Monitor className="w-3 h-3" /> Switch to Microsoft Word App
+                        </button>
+                    </div>
+                )}
 
                 {/* Editor Ribbon (Editable Only) */}
                 {!readOnlyMode && (
