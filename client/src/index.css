@@ -12,6 +12,29 @@
   --color-primary-800: #075985;
   --color-primary-900: #0c4a6e;
   --color-primary-950: #082f49;
+
+  --font-heading: 'Outfit', sans-serif;
+  --font-body: 'Inter', sans-serif;
+
+  --animate-float: float 6s ease-in-out infinite;
+  --animate-mesh: mesh 15s ease infinite;
+  --animate-text-shimmer: text-shimmer 4s linear infinite;
+
+  @keyframes float {
+    0% { transform: translateY(0px) rotate(0deg); }
+    50% { transform: translateY(-20px) rotate(1deg); }
+    100% { transform: translateY(0px) rotate(0deg); }
+  }
+
+  @keyframes mesh {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
+  @keyframes text-shimmer {
+    to { background-position: 200% center; }
+  }
 }
 
 :root {
@@ -36,38 +59,40 @@
 @layer components {
   .glass-effect {
     @apply bg-white/70 border border-white/20;
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
   }
   
   .glass-dark {
     @apply bg-slate-900/70 border border-slate-700/30;
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+  }
+
+  .glass-card {
+    @apply bg-white/40 border border-white/30 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)];
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
   }
 
   .btn-primary {
-    @apply px-6 py-3 bg-primary-600 text-white rounded-lg font-semibold hover:bg-primary-700 transition-all duration-300 shadow-lg hover:shadow-primary-500/30 active:scale-95;
+    @apply px-8 py-4 bg-primary-600 text-white rounded-2xl font-bold hover:bg-primary-700 transition-all duration-500 shadow-[0_10px_20px_-10px_rgba(2,132,199,0.5)] hover:shadow-[0_20px_30px_-10px_rgba(2,132,199,0.4)] active:scale-95;
   }
 
   .btn-outline {
-    @apply px-6 py-3 border-2 border-primary-600 text-primary-600 dark:border-primary-400 dark:text-primary-400 rounded-lg font-semibold hover:bg-primary-50 dark:hover:bg-primary-900/30 transition-all duration-300 active:scale-95;
+    @apply px-8 py-4 border-2 border-slate-200 text-slate-700 dark:border-slate-800 dark:text-slate-200 rounded-2xl font-bold hover:bg-white dark:hover:bg-slate-800 hover:border-primary-500 transition-all duration-500 active:scale-95;
   }
 }
 
-/* Custom Animations */
-@keyframes float {
-  0% { transform: translateY(0px); }
-  50% { transform: translateY(-20px); }
-  100% { transform: translateY(0px); }
-}
-
-.animate-float {
-  animation: float 6s ease-in-out infinite;
+.bg-mesh {
+  background: linear-gradient(-45deg, #f0f9ff, #e0f2fe, #f5f3ff, #faf5ff);
+  background-size: 400% 400%;
+  @apply animate-mesh;
 }
 
 .gradient-text {
-  @apply bg-clip-text text-transparent bg-gradient-to-r from-primary-600 to-indigo-600 dark:from-primary-400 dark:to-indigo-400;
+  @apply bg-clip-text text-transparent bg-gradient-to-r from-primary-600 via-indigo-600 to-violet-600 animate-text-shimmer;
+  background-size: 200% auto;
 }
 
 /* Word Clone Utilities */

@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Search, Eye, FileText, Database, EyeOff, X, FileImage, FileVideo, FileAudio, Archive, File } from 'lucide-react';
+import { Search, Eye, FileText, Database, EyeOff, X, FileImage, FileVideo, FileAudio, Archive, File, FileSpreadsheet, Presentation, FileCode } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 import MSWordOnline from '../Dashboard/MSWordOnline';
 import SpreadsheetEngine from '../Dashboard/SpreadsheetEngine';
 import OfficeViewer from '../Dashboard/OfficeViewer';
+import { getDocType, getIconColor } from '../../utils/fileUtils';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -17,13 +18,22 @@ const PublicDocuments = () => {
   const [viewState, setViewState] = useState({ isOpen: false, url: null, doc: null });
   const { user } = useAuth();
 
-  const getDocIcon = (type) => {
-    const t = type?.toLowerCase() || '';
-    if (t.includes('image')) return <FileImage className="w-5 h-5 text-orange-500 mt-0.5 shrink-0" />;
-    if (t.includes('pdf')) return <FileText className="w-5 h-5 text-red-500 mt-0.5 shrink-0" />;
+  const getDocIcon = (doc) => {
+    const docInfo = getDocType(doc.fileType, doc.fileName, doc.title);
+    const colorClass = getIconColor(docInfo.mainType);
+    
+    if (docInfo.isImage) return <FileImage className={`w-5 h-5 ${colorClass} mt-0.5 shrink-0`} />;
+    if (docInfo.isPdf) return <FileText className={`w-5 h-5 ${colorClass} mt-0.5 shrink-0`} />;
+    if (docInfo.isExcel) return <FileSpreadsheet className={`w-5 h-5 ${colorClass} mt-0.5 shrink-0`} />;
+    if (docInfo.isPPT) return <Presentation className={`w-5 h-5 ${colorClass} mt-0.5 shrink-0`} />;
+    if (docInfo.isWord) return <FileText className={`w-5 h-5 ${colorClass} mt-0.5 shrink-0`} />;
+
+    const t = doc.fileType?.toLowerCase() || '';
     if (t.includes('video')) return <FileVideo className="w-5 h-5 text-purple-500 mt-0.5 shrink-0" />;
     if (t.includes('audio')) return <FileAudio className="w-5 h-5 text-green-500 mt-0.5 shrink-0" />;
     if (t.includes('zip') || t.includes('compressed')) return <Archive className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />;
+    if (t.includes('javascript') || t.includes('html') || t.includes('css') || t.includes('code')) return <FileCode className="w-5 h-5 text-blue-500 mt-0.5 shrink-0" />;
+    
     return <File className="w-5 h-5 text-slate-400 mt-0.5 shrink-0" />;
   };
 
@@ -55,35 +65,43 @@ const PublicDocuments = () => {
   };
 
   return (
-    <section className="py-20 bg-slate-50 relative overflow-hidden" id="repository">
+    <section className="py-32 bg-slate-50/50 relative overflow-hidden" id="repository">
       <div className="max-w-7xl mx-auto px-6 relative z-10">
         
-        <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold mb-4 text-slate-900 border-b-2 border-indigo-500 inline-block pb-2">
-            Public Document Repository
+        <div className="text-center mb-16">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            className="inline-block px-4 py-1.5 bg-emerald-50 text-emerald-600 rounded-full text-[10px] font-black uppercase tracking-[0.2em] mb-6 border border-emerald-100"
+          >
+            Open Data Protocol
+          </motion.div>
+          <h2 className="text-4xl lg:text-5xl font-black mb-6 text-slate-950 tracking-tight">
+            Public Document <span className="text-emerald-600">Repository</span>
           </h2>
-          <p className="text-slate-600 max-w-2xl mx-auto">
-            Search, view, and download publicly available files issued by authorized sources in our system.
+          <p className="text-xl text-slate-600 max-w-2xl mx-auto font-medium">
+            Search, view, and verify publicly available files issued by authorized sources within the DocVault ecosystem.
           </p>
         </div>
 
         {/* Search Bar */}
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-8 max-w-3xl mx-auto flex gap-4">
+        <div className="bg-white p-2 rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.05)] border border-slate-100 mb-16 max-w-4xl mx-auto flex items-center gap-2">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+            <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
             <input 
               type="text" 
-              placeholder="Document Name / Description" 
+              placeholder="Search by ID, Name, or Issuing Authority..." 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+              className="w-full pl-14 pr-6 py-5 border-none bg-transparent rounded-2xl focus:outline-none text-slate-700 font-medium placeholder:text-slate-400"
             />
           </div>
           <button 
             onClick={fetchPublicData}
-            className="px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium transition-colors"
+            className="px-10 py-4 bg-slate-950 hover:bg-slate-800 text-white rounded-2xl font-bold transition-all shadow-xl hover:shadow-slate-900/20 active:scale-95"
           >
-            Search
+            Search Repository
           </button>
         </div>
 
@@ -136,13 +154,19 @@ const PublicDocuments = () => {
                       {new Date(doc.createdAt).toLocaleDateString('en-GB')}
                     </td>
                     <td className="px-6 py-4">
-                      <span className="inline-block px-3 py-1 bg-slate-100 text-slate-600 rounded-full text-xs font-medium">
-                        {doc.fileType.split('/')[1]?.toUpperCase() || 'DOCUMENT'}
+                      <span className={`inline-block px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                        getDocType(doc.fileType, doc.fileName, doc.title).mainType === 'word' ? 'bg-blue-50 text-blue-700 border border-blue-100' :
+                        getDocType(doc.fileType, doc.fileName, doc.title).mainType === 'excel' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
+                        getDocType(doc.fileType, doc.fileName, doc.title).mainType === 'pdf' ? 'bg-red-50 text-red-700 border border-red-100' :
+                        getDocType(doc.fileType, doc.fileName, doc.title).mainType === 'ppt' ? 'bg-orange-50 text-orange-700 border border-orange-100' :
+                        'bg-slate-100 text-slate-600 border border-slate-200'
+                      }`}>
+                        {(getDocType(doc.fileType, doc.fileName, doc.title).mainType || 'DOCUMENT').toUpperCase()}
                       </span>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-start gap-3">
-                        {getDocIcon(doc.fileType)}
+                        {getDocIcon(doc)}
                         <div>
                           <p className="font-medium text-slate-900">{doc.title}</p>
                           <p className="text-xs text-slate-500 mt-1 line-clamp-2">

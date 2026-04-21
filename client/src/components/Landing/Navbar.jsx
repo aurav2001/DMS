@@ -37,8 +37,16 @@ const Navbar = () => {
   };
 
   return (
-    <nav className={`fixed w-full z-50 transition-all duration-300 ${scrolled ? 'glass-effect py-2 shadow-lg' : 'bg-transparent py-4'}`}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <nav className={`fixed w-full z-50 transition-all duration-500 ${
+      scrolled 
+      ? 'top-4 px-4 sm:px-6 lg:px-8' 
+      : 'top-0 px-0 py-4'
+    }`}>
+      <div className={`max-w-7xl mx-auto px-6 py-3 transition-all duration-500 ${
+        scrolled 
+        ? 'glass-effect rounded-3xl shadow-[0_8px_32px_rgba(0,0,0,0.08)] backdrop-blur-2xl' 
+        : 'bg-transparent'
+      }`}>
         <div className="flex justify-between items-center">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2">
