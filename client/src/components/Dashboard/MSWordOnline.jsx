@@ -806,41 +806,44 @@ const MSWordOnline = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
     return (
         <div className="fixed inset-0 z-[200] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => { setShowFontPicker(false); setShowSizePicker(false); setShowColorPicker(false); setShowHighlightPicker(false); }}>
             <div className="bg-white w-full h-full max-w-6xl rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200">
-                {/* Premium Header (Unified View/Edit) */}
-                <div className="h-16 border-b border-slate-200 flex items-center justify-between px-6 bg-slate-50">
+                {/* Top Toolbar - Logo & Global Actions */}
+                <div className="h-14 bg-[#185abd] flex items-center justify-between px-4 shadow-lg z-[60]">
                     <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-lg bg-[#185abd]">
-                            <Shield className="w-5 h-5 text-white" />
+                        <div className="bg-white/10 p-2 rounded-xl backdrop-blur-sm border border-white/5">
+                            <FileText className="w-6 h-6 text-white" />
                         </div>
                         <div>
-                            <div className="flex items-center gap-2">
-                                <h3 className="text-sm font-bold text-slate-900 truncate max-w-md">
-                                    {doc.title}
-                                </h3>
-                                <span className={`text-[9px] px-1.5 py-0.5 rounded font-black uppercase tracking-wider ${readOnlyMode ? 'bg-amber-100 text-amber-700 border border-amber-200' : 'bg-primary-100 text-primary-700 border border-primary-200'}`}>
-                                    {readOnlyMode ? 'View Only' : 'Edit Mode'}
+                            <h2 className="text-white font-bold text-sm tracking-tight">{doc.title}</h2>
+                            <div className="flex items-center gap-2 mt-0.5">
+                                <span className="bg-white/20 text-white text-[8px] px-1.5 py-0.5 rounded font-black uppercase tracking-wider border border-white/10">Premium High-Fidelity Editor</span>
+                                <span className="text-blue-100 text-[9px] font-medium opacity-80 flex items-center gap-1">
+                                    <Check className="w-3 h-3" /> Auto-Sync Active
                                 </span>
                             </div>
-                            <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">
-                                {readOnlyMode ? 'Premium Native Engine (Same Format)' : 'DocVault Premium Editor Suite'}
-                            </p>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
+                        {!readOnlyMode && (
+                            <button 
+                                onClick={handleSave} 
+                                disabled={saving}
+                                className={`flex items-center gap-2 px-5 py-2 ${saving ? 'bg-amber-400' : 'bg-emerald-500'} hover:opacity-90 text-white text-xs font-black rounded-lg transition-all shadow-lg active:scale-95 group`}
+                            >
+                                {saving ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                    <Save className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                                )}
+                                {saving ? 'SAVING TO CLOUD...' : 'SAVE TO SERVER'}
+                            </button>
+                        )}
+                        
                         <button 
-                            onClick={openInDesktop}
-                            className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-[11px] font-bold rounded-lg transition-all shadow-sm group"
-                            title="Open in Original Microsoft Office Desktop App"
+                            onClick={onClose}
+                            className="p-2 text-white/70 hover:text-white hover:bg-white/10 rounded-full transition-all"
                         >
-                            <Monitor className="w-3.5 h-3.5 text-[#185abd] group-hover:scale-110 transition-transform" />
-                            <span className="hidden md:inline">Open in Desktop</span>
-                        </button>
-
-                        <div className="h-8 w-px bg-slate-200 mx-1 hidden md:block" />
-
-                        <button onClick={onClose} className="p-2 hover:bg-red-50 text-red-500 rounded-lg transition-colors">
-                            <X className="w-6 h-6" />
+                            <X className="w-5 h-5" />
                         </button>
                     </div>
                 </div>
@@ -863,9 +866,6 @@ const MSWordOnline = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
                                 </button>
                             ))}
                             <div className="flex-1" />
-                            <button onClick={handleSave} disabled={saving} className="flex items-center gap-2 px-4 py-1.5 bg-primary-600 text-white text-[11px] font-bold hover:bg-primary-700 transition-all">
-                                <Save className="w-3 h-3" /> {saving ? 'Saving...' : 'Save'}
-                            </button>
                         </div>
                         
                         {mode === 'word' && (

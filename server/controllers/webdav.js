@@ -146,31 +146,57 @@ const handleWebDAV = async (req, res) => {
                 const chunks = [];
                 req.on('data', chunk => chunks.push(chunk));
                 req.on('end', async () => {
-                    const buffer = Buffer.concat(chunks);
-                    
-                    if (documentData.storageType === 'local') {
-                        const storageDir = process.env.LOCAL_STORAGE_PATH || path.join(__dirname, '../uploads');
-                        const filePath = path.join(storageDir, documentData.storagePath);
-                        fs.writeFileSync(filePath, buffer);
-                    } else if (documentData.storageType === 'sftp') {
-                        await uploadToSFTP(buffer, documentData.storagePath);
-                    } else if (documentData.storageType === 'cloudinary') {
-                        await new Promise((resolve, reject) => {
-                            const uploadStream = cloudinary.uploader.upload_stream(
-                                { resource_type: 'raw', public_id: documentData.storagePath, overwrite: true },
-                                (err, res) => err ? reject(err) : resolve(res)
-                            );
-                            uploadStream.end(buffer);
-                        });
-                    } else {
-                        documentData.fileData = buffer;
-                    }
+                    try {
+                        const buffer = Buffer.concat(chunks);
+                        console.log(`[WEBDAV] PUT Received: ${buffer.length} bytes for ${documentData.fileName}`);
 
-                    documentData.fileSize = buffer.length;
-                    documentData.updatedAt = Date.now();
-                    await documentData.save();
-                    
-                    res.status(204).send();
+                        // 1. Archive current state as a version before overwriting
+                        const currentVersionNumber = documentData.versions.length + 1;
+                        const archiveVersion = {
+                            versionNumber: currentVersionNumber,
+                            fileUrl: documentData.fileUrl,
+                            storagePath: documentData.storagePath,
+                            fileData: documentData.fileData,
+                            updatedBy: user._id,
+                            updatedAt: documentData.updatedAt || Date.now()
+                        };
+                        documentData.versions.push(archiveVersion);
+
+                        // 2. Update actual file
+                        const newVersionNumber = currentVersionNumber + 1;
+                        if (documentData.storageType === 'local') {
+                            const storageDir = process.env.LOCAL_STORAGE_PATH || path.join(__dirname, '../uploads');
+                            const newFileName = `v${newVersionNumber}_${documentData.fileName}`;
+                            const filePath = path.join(storageDir, newFileName);
+                            fs.writeFileSync(filePath, buffer);
+                            documentData.storagePath = newFileName;
+                        } else if (documentData.storageType === 'sftp') {
+                            const newFileName = `v${newVersionNumber}_${documentData.fileName}`;
+                            const remotePath = `${process.env.SFTP_BASE_PATH || '/uploads'}/${newFileName}`;
+                            await uploadToSFTP(buffer, remotePath);
+                            documentData.storagePath = remotePath;
+                        } else if (documentData.storageType === 'cloudinary') {
+                            await new Promise((resolve, reject) => {
+                                const uploadStream = cloudinary.uploader.upload_stream(
+                                    { resource_type: 'raw', public_id: documentData.storagePath, overwrite: true },
+                                    (err, res) => err ? reject(err) : resolve(res)
+                                );
+                                uploadStream.end(buffer);
+                            });
+                        } else {
+                            documentData.fileData = buffer;
+                        }
+
+                        documentData.fileSize = buffer.length;
+                        documentData.updatedAt = Date.now();
+                        await documentData.save();
+                        
+                        console.log(`[WEBDAV] PUT Success: Saved as Version ${newVersionNumber}`);
+                        res.status(204).send();
+                    } catch (putErr) {
+                        console.error('[WEBDAV] PUT Error:', putErr);
+                        res.status(500).send('Internal Server Error');
+                    }
                 });
                 break;
 

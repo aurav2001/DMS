@@ -148,23 +148,15 @@ const PPTEditor = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
                     </div>
                 </div>
 
-                <div className="flex items-center gap-3">
-                    <button 
-                        onClick={openInDesktop}
-                        className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white border border-white/20 text-[11px] font-bold rounded-full transition-all group"
-                    >
-                        <Monitor className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
-                        <span>Open in Desktop</span>
-                        <ExternalLink className="w-2.5 h-2.5 opacity-50" />
-                    </button>
+                <div className="flex items-center gap-2">
                     {!readOnlyMode && (
                         <button 
                             onClick={handleSave}
                             disabled={saving}
-                            className="flex items-center gap-2 px-6 py-2 bg-white text-[#b7472a] hover:bg-red-50 disabled:opacity-50 text-xs font-black rounded-full transition-all shadow-md group"
+                            className={`flex items-center gap-2 px-6 py-2 ${saving ? 'bg-amber-400' : 'bg-white'} ${saving ? 'text-white' : 'text-[#b7472a]'} hover:opacity-90 disabled:opacity-50 text-xs font-black rounded-full transition-all shadow-md group`}
                         >
                             {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-4 h-4 group-hover:scale-110 transition-transform" />}
-                            {saving ? 'Processing...' : 'Export & Save'}
+                            {saving ? 'PROCESSING...' : 'SAVE TO SERVER'}
                         </button>
                     )}
                     <button 
