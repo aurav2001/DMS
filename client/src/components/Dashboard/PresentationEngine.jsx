@@ -125,26 +125,6 @@ const PPTEditor = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
         }
     };
 
-    const openInDesktop = async () => {
-        try {
-            const token = localStorage.getItem('token');
-            const res = await axios.post(`${API_BASE}/documents/${doc._id}/open-in-desktop`, {}, {
-                headers: { 'x-auth-token': token }
-            });
-
-            if (res.data.mode === 'protocol' && res.data.uri) {
-                toast.success('Triggering Desktop Application...', { icon: '🚀' });
-                setTimeout(() => {
-                    window.location.href = res.data.uri;
-                }, 1000);
-            } else {
-                toast.success(`Opening ${doc.title} in PowerPoint...`, { icon: '🚀' });
-            }
-        } catch (err) {
-            console.error('Desktop Open Error:', err);
-            toast.error(err.response?.data?.message || 'Failed to open Desktop Application');
-        }
-    };
 
     return (
         <div className="fixed inset-0 z-[200] bg-[#f0f2f5] flex flex-col font-sans">

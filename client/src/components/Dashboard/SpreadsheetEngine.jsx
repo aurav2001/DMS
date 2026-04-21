@@ -101,17 +101,6 @@ const ExcelEditor = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
         }
     };
 
-    const openInDesktop = async () => {
-        try {
-            const token = localStorage.getItem('token');
-            const res = await axios.post(`${API_BASE}/documents/${doc._id}/open-in-desktop`, {}, {
-                headers: { 'x-auth-token': token }
-            });
-            if (res.data.uri) window.location.href = res.data.uri;
-        } catch (err) {
-            toast.error('Failed to open Desktop Application');
-        }
-    };
 
     return (
         <div className="fixed inset-0 z-[200] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">

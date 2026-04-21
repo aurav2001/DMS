@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { X, User, Mail, Lock, Shield, Loader2 } from 'lucide-react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
-import { API_BASE } from '../utils/api';
+import { API_BASE } from '../../utils/api';
 
 const AddUserModal = ({ onClose, onSuccess }) => {
     const [loading, setLoading] = useState(false);
