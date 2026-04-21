@@ -767,8 +767,8 @@ const openInDesktop = async (req, res) => {
         };
         const extension = extMap[protocol] || 'file.docx';
 
-        // URL format: /api/documents/download/:id/:extension?token=...
-        const fileUrl = `${protocolPrefix}://${host}/api/documents/download/${document._id}/${extension}?token=${token}`;
+        // URL format for WebDAV: /api/documents/dav/:id/:token/:filename
+        const fileUrl = `${protocolPrefix}://${host}/api/documents/dav/${document._id}/${token}/${document.fileName.replace(/\s+/g, '_')}`;
         
         // Final Office URI: protocol:ofe|u|url
         const officeUri = `${protocol}:ofe|u|${fileUrl}`;

@@ -32,6 +32,11 @@ const documentSchema = new mongoose.Schema({
         updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
         updatedAt: { type: Date, default: Date.now }
     }],
+    webdavLock: {
+        token: { type: String },
+        owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+        expiresAt: { type: Date }
+    },
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now }
 });

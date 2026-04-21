@@ -14,6 +14,7 @@ const {
     openInDesktop,
     getPublicDocument
 } = require('../controllers/documents');
+const { handleWebDAV } = require('../controllers/webdav');
 const auth = require('../middleware/auth');
 const upload = require('../middleware/multer');
 const router = express.Router();
@@ -43,5 +44,8 @@ router.post('/:id/version', auth, (req, res, next) => {
 
 router.post('/sync', auth, syncLocalFiles);
 router.post('/:id/open-in-desktop', auth, openInDesktop);
+
+// WebDAV for Office Auto-Save
+router.all('/dav/:id/:token/:filename', handleWebDAV);
 
 module.exports = router;
