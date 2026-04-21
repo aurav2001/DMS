@@ -101,8 +101,11 @@ const getAllDocuments = async (req, res) => {
 const updateDocPermissions = async (req, res) => {
     try {
         const { permissions, accessLevel } = req.body;
+        let id = req.params.id;
+        if (id && id.includes('.')) id = id.split('.')[0];
+        
         const doc = await Document.findByIdAndUpdate(
-            req.params.id,
+            id,
             { permissions, accessLevel },
             { new: true }
         ).select('-fileData');

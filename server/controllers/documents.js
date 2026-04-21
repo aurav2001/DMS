@@ -181,11 +181,7 @@ const downloadDocument = async (req, res) => {
     try {
         const { versionNumber } = req.params;
         let id = req.params.id;
-        
-        // Hardening: Strip any accidental extensions (e.g., .docx) if present in the ID path segment
-        if (id && id.includes('.')) {
-            id = id.split('.')[0];
-        }
+        if (id && id.includes('.')) id = id.split('.')[0];
 
         let document = await Document.findById(id);
         if (!document) return res.status(404).json({ message: 'Document not found' });
@@ -432,7 +428,7 @@ const deleteDocument = async (req, res) => {
                     console.error('Cloudinary Delete Error:', cloudErr);
                 }
             }
-            await Document.findByIdAndDelete(req.params.id);
+            await Document.findByIdAndDelete(id);
             res.json({ message: 'Document deleted permanently' });
         } else {
             document.isDeleted = true;
@@ -446,7 +442,9 @@ const deleteDocument = async (req, res) => {
 
 const toggleStar = async (req, res) => {
     try {
-        const document = await Document.findById(req.params.id);
+        let id = req.params.id;
+        if (id && id.includes('.')) id = id.split('.')[0];
+        const document = await Document.findById(id);
         if (!document) return res.status(404).json({ message: 'Document not found' });
         
         document.isStarred = !document.isStarred;
@@ -466,7 +464,9 @@ const shareDocument = async (req, res) => {
         const targetUser = await User.findOne({ email });
         if (!targetUser) return res.status(404).json({ message: 'User not found with this email' });
 
-        const document = await Document.findById(req.params.id);
+        let id = req.params.id;
+        if (id && id.includes('.')) id = id.split('.')[0];
+        const document = await Document.findById(id);
         if (!document) return res.status(404).json({ message: 'Document not found' });
 
         // Add to sharedWith if not already there
@@ -502,7 +502,9 @@ const shareDocument = async (req, res) => {
 const unshareDocument = async (req, res) => {
     try {
         const { userId } = req.body;
-        const document = await Document.findById(req.params.id);
+        let id = req.params.id;
+        if (id && id.includes('.')) id = id.split('.')[0];
+        const document = await Document.findById(id);
         if (!document) return res.status(404).json({ message: 'Document not found' });
 
         document.sharedWith = document.sharedWith.filter(id => id.toString() !== userId);
@@ -584,7 +586,9 @@ const viewDocument = async (req, res) => {
 const updateDocumentMetadata = async (req, res) => {
     try {
         const { title, tags } = req.body;
-        const document = await Document.findById(req.params.id);
+        let id = req.params.id;
+        if (id && id.includes('.')) id = id.split('.')[0];
+        const document = await Document.findById(id);
         if (!document) return res.status(404).json({ message: 'Document not found' });
 
         const isOwner = document.uploadedBy.toString() === req.user.id;
@@ -794,7 +798,9 @@ const updateDocumentVersion = async (req, res) => {
 
 const openInDesktop = async (req, res) => {
     try {
-        const document = await Document.findById(req.params.id);
+        let id = req.params.id;
+        if (id && id.includes('.')) id = id.split('.')[0];
+        const document = await Document.findById(id);
         if (!document) return res.status(404).json({ message: 'Document not found' });
 
         // Protocol URI mapping
