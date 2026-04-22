@@ -804,8 +804,8 @@ const MSWordOnline = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
     );
 
     return (
-        <div className="fixed inset-0 z-[200] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => { setShowFontPicker(false); setShowSizePicker(false); setShowColorPicker(false); setShowHighlightPicker(false); }}>
-            <div className="bg-white w-full h-full max-w-6xl rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200">
+        <div className="fixed inset-0 z-[200] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center" onClick={() => { setShowFontPicker(false); setShowSizePicker(false); setShowColorPicker(false); setShowHighlightPicker(false); }}>
+            <div className="bg-white w-full h-full shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200">
                 {/* Top Toolbar - Logo & Global Actions */}
                 <div className="h-14 bg-[#185abd] flex items-center justify-between px-4 shadow-lg z-[60]">
                     <div className="flex items-center gap-3">
