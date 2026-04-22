@@ -12,6 +12,7 @@ import axios from 'axios';
 import toast from 'react-hot-toast';
 import { getDocType } from '../../utils/fileUtils';
 import { API_BASE } from '../../utils/api';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const FONTS = ['Arial', 'Times New Roman', 'Calibri', 'Georgia', 'Verdana', 'Courier New', 'Trebuchet MS', 'Comic Sans MS', 'Impact', 'Tahoma'];
 const FONT_SIZES = ['8', '9', '10', '11', '12', '14', '16', '18', '20', '22', '24', '26', '28', '36', '48', '72'];
