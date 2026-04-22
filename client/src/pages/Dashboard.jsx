@@ -6,7 +6,7 @@ import Breadcrumbs from '../components/Dashboard/Breadcrumbs';
 import UploadModal from '../components/Dashboard/UploadModal';
 import NewFolderModal from '../components/Dashboard/NewFolderModal';
 import ShareModal from '../components/Dashboard/ShareModal';
-import UnifiedShareModal from '../components/Dashboard/UnifiedShareModal';
+import AdvancedShareModal from '../components/Dashboard/AdvancedShareModal';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 import { FolderPlus, Share2, Trash2 } from 'lucide-react';
@@ -166,7 +166,7 @@ const Dashboard = () => {
             )}
 
             {isShareModalOpen && (
-                <UnifiedShareModal 
+                <AdvancedShareModal 
                     onClose={() => setIsShareModalOpen(false)}
                     onSuccess={fetchContents}
                 />
@@ -182,7 +182,7 @@ const Dashboard = () => {
                     onSuccess={fetchContents}
                 />
             )}
-            <div className="hidden" data-build-version="v1.0.2-unified-modal"></div>
+            <div className="hidden" data-build-version="v0.2.0-advanced-modal"></div>
         </DashboardLayout>
     );
 };
