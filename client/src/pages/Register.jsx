@@ -62,7 +62,6 @@ const Register = () => {
                             <Link to="/login" className="text-primary-600 font-bold hover:underline transition-all">Sign In</Link>
                         </p>
                     </div>
-                </div>
                 <div className="mt-6 text-center">
                     <Link to="/" className="text-xs text-slate-400 hover:text-slate-600 font-medium">Back to Landing Page</Link>
                 </div>
