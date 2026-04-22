@@ -91,6 +91,18 @@ const AdminDashboard = () => {
     } catch (err) { console.error(err); }
   };
 
+  const deleteDocumentHandler = async (docId) => {
+    if (!confirm('Are you sure you want to delete this document? This action cannot be undone.')) return;
+    try {
+      await axios.delete(`${API_BASE}/documents/${docId}`);
+      setDocuments(prev => prev.filter(d => d._id !== docId));
+      if (stats) setStats({ ...stats, totalDocs: stats.totalDocs - 1 });
+    } catch (err) {
+      console.error(err);
+      alert('Failed to delete document');
+    }
+  };
+
   const formatBytes = (bytes) => {
     if (!bytes) return '0 B';
     const k = 1024;
@@ -412,6 +424,7 @@ const AdminDashboard = () => {
                         doc={doc} 
                         users={users}
                         onUpdate={updatePermissions}
+                        onDelete={deleteDocumentHandler}
                         onView={() => {
                           const docInfo = getDocType(doc.fileType, doc.fileName, doc.title);
                           const isOffice = docInfo.isWord || docInfo.isExcel || docInfo.isPPT;
@@ -592,7 +605,7 @@ const AdminDashboard = () => {
 };
 
 // Document Permission Card Component
-const DocumentPermissionCard = ({ doc, onUpdate, formatBytes, users, onView }) => {
+const DocumentPermissionCard = ({ doc, onUpdate, onDelete, formatBytes, users, onView }) => {
   const [expanded, setExpanded] = useState(false);
   const [shareSearch, setShareSearch] = useState('');
   const [showUserList, setShowUserList] = useState(false);
@@ -674,6 +687,13 @@ const DocumentPermissionCard = ({ doc, onUpdate, formatBytes, users, onView }) =
             <Eye className="w-4 h-4" />
             <span className="text-[10px] font-bold">VIEW</span>
           </button>
+          <button 
+            onClick={(e) => { e.stopPropagation(); onDelete(doc._id); }}
+            className="p-2 hover:bg-red-500/20 rounded-lg text-red-400 transition flex items-center gap-2 border border-red-500/20"
+            title="Delete document"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
           <span className={`text-xs px-3 py-1 rounded-full ${
             access === 'public' ? 'bg-green-500/20 text-green-400' : 
             access === 'restricted' ? 'bg-orange-500/20 text-orange-400' : 'bg-slate-500/20 text-slate-400'
@@ -690,7 +710,7 @@ const DocumentPermissionCard = ({ doc, onUpdate, formatBytes, users, onView }) =
             exit={{ height: 0, opacity: 0 }}
             className="border-t border-white/10"
           >
-            <div className="p-5 space-y-5">
+            <div className="p-6 md:p-8 space-y-8 bg-slate-900/40">
               {/* Access Level */}
               <div>
                 <label className="text-sm text-slate-400 mb-2 block">Access Level</label>
@@ -717,8 +737,8 @@ const DocumentPermissionCard = ({ doc, onUpdate, formatBytes, users, onView }) =
 
               {/* Permission Toggles */}
               <div>
-                <label className="text-sm text-slate-400 mb-3 block">Permissions</label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                <label className="text-sm text-indigo-400 font-bold mb-4 block uppercase tracking-wider">Security Permissions</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {permButtons.map(pb => {
                     const isOn = perms[pb.key];
                     const Icon = isOn ? pb.icon : pb.offIcon;
