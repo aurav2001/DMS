@@ -70,18 +70,22 @@ const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
   const uploaderId = typeof doc.uploadedBy === 'object' ? doc.uploadedBy?._id : doc.uploadedBy;
   const isOwner = uploaderId === user?._id || uploaderId === user?.id;
   const isAdmin = user?.role === 'Admin';
+  const isViewer = user?.role === 'Viewer';
   
-  const canView = isOwner || isAdmin || doc.permissions?.canView !== false;
-  const canDownload = isOwner || isAdmin || doc.permissions?.canDownload !== false;
+  // USE BACKEND CALCULATED PERMISSIONS (Reliable)
+  // Fallback to local calculation if backend didn't provide it yet
+  const canView = doc.userPermissions?.canView ?? (isOwner || isAdmin || doc.permissions?.canView !== false);
+  const canDownload = doc.userPermissions?.canDownload ?? (isOwner || isAdmin || doc.permissions?.canDownload !== false);
   
-  // EDIT PERMISSION: Owner, Admin, or explicitly granted Edit access
-  const hasEditPermission = isOwner || isAdmin || doc.permissions?.canEdit === true;
+  // EDIT PERMISSION: Never allow for Viewer role
+  const hasEditPermission = !isViewer && (doc.userPermissions?.canEdit ?? (isOwner || isAdmin || doc.permissions?.canEdit === true));
   
-  // UI GATING: Even if hasEditPermission is true, hide edit buttons if document is Approved (Locked)
+  // UI GATING: Locked if Approved
   const isLocked = doc.status === 'Approved';
   const showEditActions = hasEditPermission && !isLocked;
   
-  const canEdit = showEditActions; // For general use in the component
+  const canEdit = showEditActions;
+  const canShare = !isViewer && (doc.userPermissions?.canShare ?? (isOwner || isAdmin || doc.permissions?.canEdit));
   
   // Robust Detection for Editor Support
   const docInfo = getDocType(doc.fileType, doc.fileName, doc.title);
@@ -430,7 +434,7 @@ const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
                 </button>
               )}
 
-              {user?.role !== 'Viewer' && (isOwner || doc.permissions?.canEdit || isAdmin) && (
+              {canShare && (
                 <button 
                   onClick={() => { onShare(doc._id, doc.title); setShowOptions(false); }}
                   className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"

@@ -66,7 +66,59 @@ exports.getFolderContents = async (req, res) => {
         const folders = await Folder.find(folderQuery);
         const documents = await Document.find(docQuery).populate('uploadedBy', 'name email avatar');
 
-        res.json({ folders, documents });
+        // Helper to calculate effective permissions for a document
+        const getDocPermissions = async (doc, user) => {
+            const userId = user.id.toString();
+            const isAdmin = user.role === 'Admin';
+            const isViewer = user.role === 'Viewer';
+            const uploaderId = doc.uploadedBy?._id?.toString() || doc.uploadedBy?.toString();
+            const isOwner = uploaderId === userId;
+
+            let canView = isOwner || isAdmin;
+            let canDownload = isOwner || isAdmin;
+            let canEdit = isOwner || isAdmin;
+            let canShare = isOwner || isAdmin;
+
+            // Inherit from parent folders
+            if (doc.folderId) {
+                let currentId = doc.folderId;
+                while (currentId) {
+                    const f = await Folder.findById(currentId);
+                    if (!f) break;
+                    const share = f.sharedWith?.find(s => s.user.toString() === userId);
+                    if (f.owner.toString() === userId || share) {
+                        canView = true;
+                        canDownload = true;
+                        if (!isViewer && (f.owner.toString() === userId || share.access === 'edit')) canEdit = true;
+                        break;
+                    }
+                    currentId = f.parentId;
+                }
+            }
+
+            // Direct share
+            if (doc.sharedWith?.some(id => id.toString() === userId)) {
+                canView = true;
+                canDownload = true;
+                if (!isViewer && doc.permissions?.canEdit) canEdit = true;
+            }
+
+            if (isViewer) {
+                canEdit = false;
+                canShare = false;
+            }
+
+            if (doc.status === 'Approved') canEdit = false;
+
+            return { canView, canDownload, canEdit, canShare };
+        };
+
+        const docsWithPerms = await Promise.all(documents.map(async (doc) => {
+            const perms = await getDocPermissions(doc, req.user);
+            return { ...doc.toObject(), userPermissions: perms };
+        }));
+
+        res.json({ folders, documents: docsWithPerms });
     } catch (err) {
         res.status(500).json({ message: 'Error fetching contents', error: err.message });
     }

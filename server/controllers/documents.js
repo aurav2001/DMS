@@ -18,6 +18,68 @@ if (process.env.STORAGE_TYPE === 'cloudinary') {
     });
 }
 
+// HELPER: Calculate effective permissions for a user on a document
+const getEffectivePermissions = async (doc, user) => {
+    const userId = user.id.toString();
+    const isAdmin = user.role === 'Admin';
+    const isEditor = user.role === 'Editor';
+    const isViewer = user.role === 'Viewer';
+    const uploaderId = (typeof doc.uploadedBy === 'object' && doc.uploadedBy !== null) 
+        ? doc.uploadedBy._id.toString() 
+        : doc.uploadedBy?.toString();
+    const isOwner = uploaderId === userId;
+
+    // BASE PERMISSIONS
+    let canView = isOwner || isAdmin;
+    let canDownload = isOwner || isAdmin;
+    let canEdit = isOwner || isAdmin;
+    let canShare = isOwner || isAdmin;
+    let canDelete = isOwner || isAdmin;
+
+    // IF SHARED DIRECTLY
+    const isSharedDirectly = doc.sharedWith?.some(id => id.toString() === userId);
+    if (isSharedDirectly) {
+        canView = true;
+        canDownload = doc.permissions?.canDownload !== false;
+        // Direct sharing currently doesn't specify level, so we use doc.permissions
+        canEdit = !isViewer && doc.permissions?.canEdit === true;
+    }
+
+    // IF SHARED VIA FOLDER (CASCADING)
+    if (doc.folderId) {
+        let currentFolderId = doc.folderId;
+        while (currentFolderId) {
+            const folder = await Folder.findById(currentFolderId);
+            if (!folder) break;
+            
+            const folderShare = folder.sharedWith?.find(s => s.user.toString() === userId);
+            if (folder.owner.toString() === userId || folderShare) {
+                canView = true;
+                canDownload = true;
+                if (!isViewer && (folder.owner.toString() === userId || folderShare.access === 'edit')) {
+                    canEdit = true;
+                }
+                break;
+            }
+            currentFolderId = folder.parentId;
+        }
+    }
+
+    // ROLE OVERRIDES (Strict Gating)
+    if (isViewer) {
+        canEdit = false;
+        canShare = false;
+        canDelete = false;
+    }
+
+    // STATUS GATING
+    if (doc.status === 'Approved') {
+        canEdit = false; // Locked
+    }
+
+    return { canView, canDownload, canEdit, canShare, canDelete };
+};
+
 // HELPER: Handle versioning when uploading an existing file
 const handleVersionUpdateFromUpload = async (req, res, document) => {
     try {
@@ -332,7 +394,14 @@ const getDocuments = async (req, res) => {
         }
 
         const documents = await findQuery;
-        res.json(documents);
+        
+        // Calculate effective permissions for each document
+        const docsWithPermissions = await Promise.all(documents.map(async (doc) => {
+            const permissions = await getEffectivePermissions(doc, req.user);
+            return { ...doc.toObject(), userPermissions: permissions };
+        }));
+
+        res.json(docsWithPermissions);
     } catch (err) {
         res.status(500).json({ message: err.message });
     }
@@ -611,34 +680,10 @@ const updateDocumentMetadata = async (req, res) => {
         const document = await Document.findById(id);
         if (!document) return res.status(404).json({ message: 'Document not found' });
 
-        const isOwner = document.uploadedBy.toString() === req.user.id;
-        const isAdmin = req.user.role === 'Admin';
-        const isEditor = req.user.role === 'Editor';
-        const isSharedDirectly = document.sharedWith?.some(id => id.toString() === req.user.id.toString());
-        
-        let isSharedViaFolder = false;
-        let folderAccess = 'view';
-        if (document.folderId) {
-            let currentFolderId = document.folderId;
-            while (currentFolderId) {
-                const folder = await Folder.findById(currentFolderId);
-                if (!folder) break;
-                const share = folder.sharedWith.find(s => s.user.toString() === req.user.id.toString());
-                if (folder.owner.toString() === req.user.id.toString() || share) {
-                    isSharedViaFolder = true;
-                    if (folder.owner.toString() === req.user.id.toString() || share.access === 'edit') {
-                        folderAccess = 'edit';
-                    }
-                    break;
-                }
-                currentFolderId = folder.parentId;
-            }
-        }
+        const effectivePerms = await getEffectivePermissions(document, req.user);
 
-        const canEdit = isOwner || isAdmin || (isEditor && (isSharedDirectly || folderAccess === 'edit')) || document.permissions?.canEdit;
-
-        if (!canEdit) {
-            return res.status(403).json({ message: 'No permission to edit metadata' });
+        if (!effectivePerms.canEdit) {
+            return res.status(403).json({ message: 'No permission to edit metadata or document is locked/you are a Viewer' });
         }
 
         if (title) document.title = title;
@@ -670,34 +715,10 @@ const updateDocumentVersion = async (req, res) => {
         const document = await Document.findById(id);
         if (!document) return res.status(404).json({ message: 'Document not found' });
 
-        const isOwner = document.uploadedBy.toString() === req.user.id;
-        const isAdmin = req.user.role === 'Admin';
-        const isEditor = req.user.role === 'Editor';
-        const isSharedDirectly = document.sharedWith?.some(id => id.toString() === req.user.id.toString());
-        
-        let isSharedViaFolder = false;
-        let folderAccess = 'view';
-        if (document.folderId) {
-            let currentFolderId = document.folderId;
-            while (currentFolderId) {
-                const folder = await Folder.findById(currentFolderId);
-                if (!folder) break;
-                const share = folder.sharedWith.find(s => s.user.toString() === req.user.id.toString());
-                if (folder.owner.toString() === req.user.id.toString() || share) {
-                    isSharedViaFolder = true;
-                    if (folder.owner.toString() === req.user.id.toString() || share.access === 'edit') {
-                        folderAccess = 'edit';
-                    }
-                    break;
-                }
-                currentFolderId = folder.parentId;
-            }
-        }
+        const effectivePerms = await getEffectivePermissions(document, req.user);
 
-        const canEdit = isOwner || isAdmin || (isEditor && (isSharedDirectly || folderAccess === 'edit')) || document.permissions?.canEdit;
-
-        if (!canEdit) {
-            return res.status(403).json({ message: 'No permission to edit content' });
+        if (!effectivePerms.canEdit) {
+            return res.status(403).json({ message: 'No permission to edit content or document is locked/you are a Viewer' });
         }
 
         const currentVersionNumber = document.versions.length + 1;
