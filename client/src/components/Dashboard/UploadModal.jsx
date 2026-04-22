@@ -61,7 +61,15 @@ const UploadModal = ({ onClose, onSuccess, folderId }) => {
                     'x-auth-token': token
                 }
             });
-            toast.success('File uploaded successfully!');
+            
+            if (res.data.version > 1) {
+                toast.success(`Successfully uploaded Version ${res.data.version}!`, {
+                    icon: '📂',
+                    duration: 4000
+                });
+            } else {
+                toast.success('File uploaded successfully!');
+            }
             onSuccess(res.data);
         } catch (err) {
             toast.error(err.response?.data?.message || 'Upload failed');

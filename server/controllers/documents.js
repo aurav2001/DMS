@@ -37,15 +37,17 @@ const handleVersionUpdateFromUpload = async (req, res, document) => {
 
         const newVersionNumber = currentVersionNumber + 1;
 
+        const extension = path.extname(req.file.originalname).substring(1).toLowerCase() || 'others';
+        const fileName = `v${newVersionNumber}-${Date.now()}-${req.file.originalname}`;
+
         if (storageType === 'local') {
-            const fileName = `v${newVersionNumber}-${Date.now()}-${req.file.originalname}`;
             const storageDir = process.env.LOCAL_STORAGE_PATH || path.join(__dirname, '../uploads');
-            if (!fs.existsSync(storageDir)) fs.mkdirSync(storageDir, { recursive: true });
-            fs.writeFileSync(path.join(storageDir, fileName), req.file.buffer);
-            document.storagePath = fileName;
+            const extDir = path.join(storageDir, extension);
+            if (!fs.existsSync(extDir)) fs.mkdirSync(extDir, { recursive: true });
+            fs.writeFileSync(path.join(extDir, fileName), req.file.buffer);
+            document.storagePath = `${extension}/${fileName}`;
         } else if (storageType === 'sftp') {
-            const fileName = `v${newVersionNumber}-${Date.now()}-${req.file.originalname}`;
-            const remotePath = `${process.env.SFTP_BASE_PATH || '/uploads'}/${fileName}`;
+            const remotePath = `${process.env.SFTP_BASE_PATH || '/uploads'}/${extension}/${fileName}`;
             await uploadToSFTP(req.file.buffer, remotePath);
             document.storagePath = remotePath;
         } else if (storageType === 'cloudinary') {
@@ -88,11 +90,14 @@ const uploadDocument = async (req, res) => {
 
         const { title, tags, folderId } = req.body;
 
+        const normalizedFolderId = (folderId === 'root' || !folderId) ? null : folderId;
+
         // SMART OVERWRITE DETECTION
         // If a file with same name exists in this folder for this user, treat as version update
+        // We use Case-Insensitive regex for a better user experience
         const existingDoc = await Document.findOne({
-            fileName: req.file.originalname,
-            folderId: (folderId === 'root' || !folderId) ? null : folderId,
+            fileName: { $regex: new RegExp(`^${req.file.originalname.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')}$`, 'i') },
+            folderId: normalizedFolderId,
             uploadedBy: req.user.id,
             isDeleted: false
         });
@@ -109,7 +114,7 @@ const uploadDocument = async (req, res) => {
             fileType: req.file.mimetype,
             fileSize: req.file.size,
             uploadedBy: req.user.id,
-            folderId: folderId || null,
+            folderId: normalizedFolderId,
             storageType,
             tags: tags ? (typeof tags === 'string' ? JSON.parse(tags) : tags) : [],
             status: 'Draft',
@@ -119,21 +124,23 @@ const uploadDocument = async (req, res) => {
             }]
         });
 
+        const extension = path.extname(req.file.originalname).substring(1).toLowerCase() || 'others';
+        const fileName = `${Date.now()}-${req.file.originalname}`;
+
         if (storageType === 'local') {
-            const fileName = `${Date.now()}-${req.file.originalname}`;
             const storageDir = process.env.LOCAL_STORAGE_PATH || path.join(__dirname, '../uploads');
+            const extDir = path.join(storageDir, extension);
             
             // Create directory if it doesn't exist
-            if (!fs.existsSync(storageDir)) {
-                fs.mkdirSync(storageDir, { recursive: true });
+            if (!fs.existsSync(extDir)) {
+                fs.mkdirSync(extDir, { recursive: true });
             }
 
-            const uploadPath = path.join(storageDir, fileName);
+            const uploadPath = path.join(extDir, fileName);
             fs.writeFileSync(uploadPath, req.file.buffer);
-            newDocument.storagePath = fileName;
+            newDocument.storagePath = `${extension}/${fileName}`;
         } else if (storageType === 'sftp') {
-            const fileName = `${Date.now()}-${req.file.originalname}`;
-            const remotePath = `${process.env.SFTP_BASE_PATH || '/uploads'}/${fileName}`;
+            const remotePath = `${process.env.SFTP_BASE_PATH || '/uploads'}/${extension}/${fileName}`;
             await uploadToSFTP(req.file.buffer, remotePath);
             newDocument.storagePath = remotePath;
         } else if (storageType === 'cloudinary') {
@@ -519,6 +526,7 @@ const unshareDocument = async (req, res) => {
 
 const viewDocument = async (req, res) => {
     try {
+        const { versionNumber } = req.params;
         let id = req.params.id;
         if (id && id.includes('.')) id = id.split('.')[0];
         const document = await Document.findById(id);
@@ -526,6 +534,16 @@ const viewDocument = async (req, res) => {
             return res.status(404).json({ message: 'Document not found' });
         }
         
+        let fileTypeToRes = document.fileType;
+        let storagePathToRes = document.storagePath;
+        let fileNameToRes = document.fileName;
+
+        if (versionNumber) {
+            const version = document.versions.find(v => v.versionNumber.toString() === versionNumber.toString());
+            if (!version) return res.status(404).json({ message: 'Version not found' });
+            if (version.storagePath) storagePathToRes = version.storagePath;
+        }
+
         const isOwner = document.uploadedBy.toString() === req.user.id.toString();
         const isAdmin = req.user.role === 'Admin';
         const isSharedDirectly = document.sharedWith?.some(id => id.toString() === req.user.id.toString());
@@ -551,21 +569,21 @@ const viewDocument = async (req, res) => {
         }
         
         res.set({
-            'Content-Type': document.fileType,
-            'Content-Disposition': `inline; filename="${document.fileName || 'view'}"`,
+            'Content-Type': fileTypeToRes,
+            'Content-Disposition': `inline; filename="${fileNameToRes || 'view'}"`,
         });
 
-        if (document.storageType === 'local' && document.storagePath) {
+        if (document.storageType === 'local' && storagePathToRes) {
             const storageDir = process.env.LOCAL_STORAGE_PATH || path.join(__dirname, '../uploads');
-            const filePath = path.join(storageDir, document.storagePath);
+            const filePath = path.join(storageDir, storagePathToRes);
             if (fs.existsSync(filePath)) {
                 const stats = fs.statSync(filePath);
                 res.set('Content-Length', stats.size);
                 return fs.createReadStream(filePath).pipe(res);
             }
-        } else if (document.storageType === 'sftp' && document.storagePath) {
+        } else if (document.storageType === 'sftp' && storagePathToRes) {
             try {
-                const data = await downloadFromSFTP(document.storagePath);
+                const data = await downloadFromSFTP(storagePathToRes);
                 res.set('Content-Length', data.length);
                 return res.send(data);
             } catch (sftpErr) {
@@ -706,15 +724,18 @@ const updateDocumentVersion = async (req, res) => {
                 const storageType = document.storageType || process.env.STORAGE_TYPE || 'mongodb';
                 console.log(`[EDITOR] Saving new ${type} version using ${storageType}`);
 
+                const extension = type || path.extname(document.fileName).substring(1).toLowerCase() || 'others';
+                const newFileName = `v${newVersionNumber}_${document.fileName}`;
+
                 if (storageType === 'local') {
                     const storageDir = process.env.LOCAL_STORAGE_PATH || path.join(__dirname, '../uploads');
-                    const newFileName = `v${newVersionNumber}_${document.fileName}`;
-                    const filePath = path.join(storageDir, newFileName);
+                    const extDir = path.join(storageDir, extension);
+                    if (!fs.existsSync(extDir)) fs.mkdirSync(extDir, { recursive: true });
+                    const filePath = path.join(extDir, newFileName);
                     fs.writeFileSync(filePath, docxBuffer);
-                    document.storagePath = newFileName;
+                    document.storagePath = `${extension}/${newFileName}`;
                 } else if (storageType === 'sftp') {
-                    const newFileName = `v${newVersionNumber}_${document.fileName}`;
-                    const remotePath = `${process.env.SFTP_BASE_PATH || '/uploads'}/${newFileName}`;
+                    const remotePath = `${process.env.SFTP_BASE_PATH || '/uploads'}/${extension}/${newFileName}`;
                     await uploadToSFTP(docxBuffer, remotePath);
                     document.storagePath = remotePath;
                 } else if (storageType === 'cloudinary') {
@@ -746,14 +767,18 @@ const updateDocumentVersion = async (req, res) => {
             }
         } else if (req.file) {
             // If it's a PDF or direct file upload from editor
+            const extension = path.extname(req.file.originalname).substring(1).toLowerCase() || 'others';
+            const newFileName = `v${newVersionNumber}_${req.file.originalname}`;
+
             if (document.storageType === 'local') {
-                const newFileName = `v${newVersionNumber}_${req.file.originalname}`;
-                const filePath = path.join(__dirname, '../uploads', newFileName);
+                const storageDir = process.env.LOCAL_STORAGE_PATH || path.join(__dirname, '../uploads');
+                const extDir = path.join(storageDir, extension);
+                if (!fs.existsSync(extDir)) fs.mkdirSync(extDir, { recursive: true });
+                const filePath = path.join(extDir, newFileName);
                 fs.writeFileSync(filePath, req.file.buffer);
-                document.storagePath = newFileName;
+                document.storagePath = `${extension}/${newFileName}`;
             } else if (document.storageType === 'sftp') {
-                const newFileName = `v${newVersionNumber}_${req.file.originalname}`;
-                const remotePath = `${process.env.SFTP_BASE_PATH || '/uploads'}/${newFileName}`;
+                const remotePath = `${process.env.SFTP_BASE_PATH || '/uploads'}/${extension}/${newFileName}`;
                 await uploadToSFTP(req.file.buffer, remotePath);
                 document.storagePath = remotePath;
             } else if (document.storageType === 'cloudinary') {

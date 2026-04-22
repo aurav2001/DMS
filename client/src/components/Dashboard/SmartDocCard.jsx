@@ -73,7 +73,15 @@ const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
   
   const canView = isOwner || isAdmin || doc.permissions?.canView !== false;
   const canDownload = isOwner || isAdmin || doc.permissions?.canDownload !== false;
-  const canEdit = isOwner || isAdmin || doc.permissions?.canEdit === true;
+  
+  // EDIT PERMISSION: Owner, Admin, or explicitly granted Edit access
+  const hasEditPermission = isOwner || isAdmin || doc.permissions?.canEdit === true;
+  
+  // UI GATING: Even if hasEditPermission is true, hide edit buttons if document is Approved (Locked)
+  const isLocked = doc.status === 'Approved';
+  const showEditActions = hasEditPermission && !isLocked;
+  
+  const canEdit = showEditActions; // For general use in the component
   
   // Robust Detection for Editor Support
   const docInfo = getDocType(doc.fileType, doc.fileName, doc.title);
@@ -354,18 +362,20 @@ const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
               <button 
                 onClick={(e) => { e.stopPropagation(); handleOpenEditor(); }}
                 className="cursor-pointer hover:bg-amber-100 hover:scale-105 transition-all text-[9px] px-2 py-0.5 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 rounded-md font-bold flex items-center gap-1 border border-amber-100 dark:border-amber-800/50"
-                title="Quick editing in browser (formatting might vary)"
+                title={isLocked ? "Editing locked for Approved documents" : "Quick editing in browser"}
               >
                 {isEditorSupported ? <FileEdit className="w-2.5 h-2.5" /> : <Edit3 className="w-2.5 h-2.5" />} WEB EDIT
               </button>
             )}
-            <button 
-              onClick={handleOpenDesktop}
-              className="cursor-pointer hover:bg-indigo-100 hover:scale-105 transition-all text-[9px] px-2 py-0.5 bg-indigo-600 text-white rounded-md font-bold flex items-center gap-1 border border-indigo-700 shadow-md"
-              title="Open in real Office 365 (Word/Excel/PPT) for 100% accurate formatting"
-            >
-              <Monitor className="w-2.5 h-2.5" /> OPEN IN OFFICE
-            </button>
+            {canEdit && isEditorSupported && (
+              <button 
+                onClick={handleOpenDesktop}
+                className="cursor-pointer hover:bg-indigo-100 hover:scale-105 transition-all text-[9px] px-2 py-0.5 bg-indigo-600 text-white rounded-md font-bold flex items-center gap-1 border border-indigo-700 shadow-md"
+                title="Open in real Office 365 (Word/Excel/PPT) for 100% accurate formatting"
+              >
+                <Monitor className="w-2.5 h-2.5" /> OPEN IN OFFICE
+              </button>
+            )}
           </div>
 
             <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-50 dark:border-white/5">

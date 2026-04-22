@@ -7,7 +7,8 @@ import {
   Users, FileText, HardDrive, Shield, Trash2, Eye, EyeOff, 
   Download, Edit3, Camera, CameraOff, Lock, Unlock, ChevronDown,
   BarChart3, ArrowLeft, Search, AlertTriangle, X, UserPlus, Loader2,
-  FileSpreadsheet, Presentation, FileCode, FileImage, FileBox, PlayCircle, FileSearch, CheckCircle // ✅ Added for file type identification
+  FileSpreadsheet, Presentation, FileCode, FileImage, FileBox, PlayCircle, FileSearch, CheckCircle,
+  Check, XCircle, Clock // ✅ Added for status management
 } from 'lucide-react';
 import AddUserModal from '../components/Admin/AddUserModal';
 
@@ -100,6 +101,17 @@ const AdminDashboard = () => {
     } catch (err) {
       console.error(err);
       alert('Failed to delete document');
+    }
+  };
+
+  const handleStatusUpdate = async (id, status) => {
+    try {
+        await axios.patch(`${API_BASE}/documents/${id}/status`, { status });
+        setDocuments(prev => prev.map(doc => 
+            doc._id === id ? { ...doc, status } : doc
+        ));
+    } catch (err) {
+        alert('Failed to update status: ' + (err.response?.data?.message || err.message));
     }
   };
 
@@ -425,6 +437,7 @@ const AdminDashboard = () => {
                         users={users}
                         onUpdate={updatePermissions}
                         onDelete={deleteDocumentHandler}
+                        onStatusUpdate={handleStatusUpdate}
                         onView={() => {
                           const docInfo = getDocType(doc.fileType, doc.fileName, doc.title);
                           const isOffice = docInfo.isWord || docInfo.isExcel || docInfo.isPPT;
@@ -605,12 +618,22 @@ const AdminDashboard = () => {
 };
 
 // Document Permission Card Component
-const DocumentPermissionCard = ({ doc, onUpdate, onDelete, formatBytes, users, onView }) => {
+const DocumentPermissionCard = ({ 
+    doc, onUpdate, onDelete, formatBytes, users, onView, onStatusUpdate 
+}) => {
   const [expanded, setExpanded] = useState(false);
   const [shareSearch, setShareSearch] = useState('');
   const [showUserList, setShowUserList] = useState(false);
   const [sharedUsers, setSharedUsers] = useState(doc.sharedWith || []);
   const [access, setAccess] = useState(doc.accessLevel || 'private');
+
+  const statusInfo = {
+    'Approved': { icon: CheckCircle, color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/30' },
+    'Rejected': { icon: XCircle, color: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/30' },
+    'Pending Review': { icon: Clock, color: 'text-orange-400', bg: 'bg-orange-500/10', border: 'border-orange-500/30' },
+    'Default': { icon: Clock, color: 'text-slate-400', bg: 'bg-slate-500/10', border: 'border-slate-500/30' }
+  };
+  const currentStatus = statusInfo[doc.status] || statusInfo['Default'];
   const [perms, setPerms] = useState(doc.permissions || {
     canView: true,
     canDownload: true,
@@ -660,18 +683,10 @@ const DocumentPermissionCard = ({ doc, onUpdate, onDelete, formatBytes, users, o
           <div>
             <div className="flex items-center gap-2">
                 <p className="font-medium">{doc.title}</p>
-                <span className={`text-[9px] px-1.5 py-0.5 rounded font-black uppercase tracking-wider ${
-                    (() => {
-                        const info = getDocType(doc.fileType, doc.fileName, doc.title);
-                        return info.isWord ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 
-                               info.isExcel ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 
-                               info.isPPT ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' : 
-                               info.isPdf ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 
-                               'bg-slate-500/20 text-slate-400 border border-slate-500/30';
-                    })()
-                }`}>
-                    {getDocType(doc.fileType, doc.fileName, doc.title).mainType}
-                </span>
+                <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold border ${currentStatus.bg} ${currentStatus.color} ${currentStatus.border}`}>
+                    <currentStatus.icon className="w-3 h-3" />
+                    <span>{doc.status || 'Draft'}</span>
+                </div>
             </div>
             <p className="text-xs text-slate-400">
               by {doc.uploadedBy?.name} • {formatBytes(doc.fileSize)}
@@ -681,15 +696,32 @@ const DocumentPermissionCard = ({ doc, onUpdate, onDelete, formatBytes, users, o
         <div className="flex items-center gap-3">
           <button 
             onClick={(e) => { e.stopPropagation(); onView(); }}
-            className="p-2 hover:bg-white/10 rounded-lg text-indigo-400 transition flex items-center gap-2 border border-indigo-500/20"
+            className="p-2 hover:bg-white/10 rounded-lg text-indigo-400 transition flex items-center gap-2 border border-white/10"
             title="View content"
           >
             <Eye className="w-4 h-4" />
-            <span className="text-[10px] font-bold">VIEW</span>
           </button>
+          
+          <div className="flex items-center bg-white/5 rounded-lg border border-white/10 p-0.5">
+            <button 
+              onClick={(e) => { e.stopPropagation(); onStatusUpdate(doc._id, 'Approved'); }}
+              className={`p-1.5 rounded-md transition ${doc.status === 'Approved' ? 'bg-emerald-500 text-white shadow-lg' : 'hover:bg-emerald-500/20 text-emerald-400'}`}
+              title="Approve Document"
+            >
+              <Check className="w-3.5 h-3.5" />
+            </button>
+            <button 
+              onClick={(e) => { e.stopPropagation(); onStatusUpdate(doc._id, 'Rejected'); }}
+              className={`p-1.5 rounded-md transition ${doc.status === 'Rejected' ? 'bg-red-500 text-white shadow-lg' : 'hover:bg-red-500/20 text-red-400'}`}
+              title="Reject Document"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
           <button 
             onClick={(e) => { e.stopPropagation(); onDelete(doc._id); }}
-            className="p-2 hover:bg-red-500/20 rounded-lg text-red-400 transition flex items-center gap-2 border border-red-500/20"
+            className="p-2 hover:bg-red-500/20 rounded-lg text-red-400 transition flex items-center gap-2 border border-red-500/10"
             title="Delete document"
           >
             <Trash2 className="w-4 h-4" />
