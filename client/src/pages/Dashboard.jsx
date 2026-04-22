@@ -6,6 +6,7 @@ import Breadcrumbs from '../components/Dashboard/Breadcrumbs';
 import UploadModal from '../components/Dashboard/UploadModal';
 import NewFolderModal from '../components/Dashboard/NewFolderModal';
 import ShareModal from '../components/Dashboard/ShareModal';
+import GlobalShareModal from '../components/Dashboard/GlobalShareModal';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 import { FolderPlus, Share2, Trash2 } from 'lucide-react';
