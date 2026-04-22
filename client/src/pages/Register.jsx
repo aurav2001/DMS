@@ -35,54 +35,26 @@ const Register = () => {
                     <p className="text-slate-600 mt-2">Start managing your documents smarter today</p>
                 </div>
 
-                <div className="bg-white p-8 rounded-3xl shadow-2xl border border-slate-100">
-                    <form onSubmit={handleSubmit} className="space-y-5">
-                        <div className="space-y-1">
-                            <label className="text-sm font-semibold text-slate-700 ml-1">Full Name</label>
-                            <div className="relative">
-                                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                                <input 
-                                    type="text" required
-                                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-primary-500 transition-all outline-none"
-                                    placeholder="Gaurav Pandey"
-                                    value={formData.name}
-                                    onChange={e => setFormData({...formData, name: e.target.value})}
-                                />
-                            </div>
+                <div className="bg-white p-8 rounded-3xl shadow-2xl border border-slate-100 text-center">
+                    <div className="bg-amber-50 text-amber-600 p-4 rounded-2xl mb-6 flex items-center gap-3 text-left">
+                        <Lock className="w-10 h-10 shrink-0" />
+                        <div>
+                            <p className="font-bold text-sm">Registration Closed</p>
+                            <p className="text-xs opacity-90">Self-registration is currently disabled. Please contact your System Administrator to get an account.</p>
                         </div>
+                    </div>
 
-                        <div className="space-y-1">
-                            <label className="text-sm font-semibold text-slate-700 ml-1">Email Address</label>
-                            <div className="relative">
-                                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                                <input 
-                                    type="email" required
-                                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-primary-500 transition-all outline-none"
-                                    placeholder="name@company.com"
-                                    value={formData.email}
-                                    onChange={e => setFormData({...formData, email: e.target.value})}
-                                />
-                            </div>
-                        </div>
+                    <p className="text-slate-600 text-sm mb-6 leading-relaxed">
+                        To maintain high security and document integrity, DocVault accounts are strictly managed by administrative staff.
+                    </p>
 
-                        <div className="space-y-1">
-                            <label className="text-sm font-semibold text-slate-700 ml-1">Password</label>
-                            <div className="relative">
-                                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                                <input 
-                                    type="password" required
-                                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-primary-500 transition-all outline-none"
-                                    placeholder="••••••••"
-                                    value={formData.password}
-                                    onChange={e => setFormData({...formData, password: e.target.value})}
-                                />
-                            </div>
-                        </div>
-
-                        <button type="submit" className="btn-primary w-full py-4 mt-2 flex items-center justify-center gap-2 font-bold shadow-lg shadow-primary-500/20 active:scale-95 transition-transform">
-                            Register Now <ArrowRight className="w-5 h-5" />
-                        </button>
-                    </form>
+                    <button 
+                        onClick={() => window.location.href = 'mailto:admin@docvault.com'} 
+                        className="btn-primary w-full py-4 mt-2 flex items-center justify-center gap-2 font-bold shadow-lg shadow-primary-500/20 active:scale-95 transition-transform"
+                    >
+                        Request Access via Email <ArrowRight className="w-5 h-5" />
+                    </button>
+                </div>
 
                     <div className="mt-8 pt-6 border-t text-center">
                         <p className="text-slate-600">

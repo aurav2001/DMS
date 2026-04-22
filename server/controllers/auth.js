@@ -3,8 +3,8 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 
 const register = async (req, res) => {
-    // Temporarily enabled for local setup
-    // return res.status(403).json({ message: 'Self-registration is disabled. Please contact the administrator to create an account.' });
+    // Disable self-registration
+    return res.status(403).json({ message: 'Self-registration is disabled. Please contact the administrator to create an account.' });
     try {
         const { name, email, password } = req.body;
         
