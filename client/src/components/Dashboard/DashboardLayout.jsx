@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
+import usePresence from '../../hooks/usePresence';
 
 const SidebarLink = ({ icon: Icon, label, active, onClick }) => (
   <button 
@@ -48,6 +49,7 @@ const DashboardLayout = ({
   const [isNewMenuOpen, setIsNewMenuOpen] = useState(false);
   const { user, logout } = useAuth();
   const [darkMode, setDarkMode] = useState(false);
+  const presence = usePresence(activeTab, user);
 
   const menuItems = [
     { icon: FileText, label: 'My Documents' },
@@ -142,6 +144,19 @@ const DashboardLayout = ({
           </div>
 
           <div className="flex items-center gap-4">
+            {/* Real-time Presence Avatars */}
+            <div className="flex -space-x-2 overflow-hidden mr-4">
+              {presence.map((p, i) => (
+                <div 
+                  key={i} 
+                  title={`${p.name} is here`}
+                  className="inline-block h-8 w-8 rounded-full ring-2 ring-white dark:ring-slate-900 bg-primary-600 flex items-center justify-center text-white text-[10px] font-bold"
+                >
+                  {p.avatar ? <img src={p.avatar} alt="" className="h-full w-full rounded-full" /> : p.name[0].toUpperCase()}
+                </div>
+              ))}
+            </div>
+
             <button onClick={() => setDarkMode(!darkMode)} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors">
               {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
             </button>

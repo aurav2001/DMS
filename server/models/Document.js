@@ -14,6 +14,7 @@ const documentSchema = new mongoose.Schema({
     tags: [{ type: String }],
     isStarred: { type: Boolean, default: false },
     isDeleted: { type: Boolean, default: false },
+    status: { type: String, enum: ['Draft', 'Pending Review', 'Approved'], default: 'Draft' },
     sharedWith: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     // Document Permissions
     permissions: {

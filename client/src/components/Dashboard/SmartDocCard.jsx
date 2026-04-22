@@ -283,15 +283,53 @@ const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
                 </>
               )}
             </div>
-              <p className="text-[10px] text-slate-400 font-medium uppercase tracking-tight flex items-center gap-2">
-                <span>{isOwner ? 'Your File' : `Shared by ${doc.uploadedBy?.name || 'Admin'}`}</span>
-                {doc.versions && doc.versions.length > 0 && (
-                  <span className="text-amber-500 font-bold">• EDIT VERSION {doc.versions.length + 1}</span>
+              <div className="flex items-center gap-2">
+                <p className="text-[10px] text-slate-400 font-medium uppercase tracking-tight">
+                  <span>{isOwner ? 'Your File' : `Shared by ${doc.uploadedBy?.name || 'Admin'}`}</span>
+                </p>
+                {doc.status && (
+                  <span className={`text-[8px] px-1.5 py-0.5 rounded-md font-black uppercase tracking-tighter border ${
+                    doc.status === 'Approved' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
+                    doc.status === 'Pending Review' ? 'bg-amber-50 text-amber-600 border-amber-100' :
+                    'bg-slate-50 text-slate-500 border-slate-100'
+                  }`}>
+                    {doc.status}
+                  </span>
                 )}
-              </p>
+              </div>
           </div>
 
           <div className="flex flex-wrap gap-1.5 mt-2">
+            {isAdmin && doc.status === 'Pending Review' && (
+              <button 
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  try {
+                    await axios.patch(`${API_BASE}/documents/${doc._id}/status`, { status: 'Approved' }, { headers: { 'x-auth-token': localStorage.getItem('token') } });
+                    toast.success('Document Approved!');
+                    if (onRefresh) onRefresh();
+                  } catch (err) { toast.error('Approval failed'); }
+                }}
+                className="cursor-pointer hover:bg-emerald-600 hover:scale-105 transition-all text-[9px] px-2 py-0.5 bg-emerald-500 text-white rounded-md font-bold flex items-center gap-1 border border-emerald-600 shadow-md"
+              >
+                <Check className="w-2.5 h-2.5" /> APPROVE NOW
+              </button>
+            )}
+            {!isAdmin && isOwner && doc.status === 'Draft' && (
+              <button 
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  try {
+                    await axios.patch(`${API_BASE}/documents/${doc._id}/status`, { status: 'Pending Review' }, { headers: { 'x-auth-token': localStorage.getItem('token') } });
+                    toast.success('Submitted for Review!');
+                    if (onRefresh) onRefresh();
+                  } catch (err) { toast.error('Submission failed'); }
+                }}
+                className="cursor-pointer hover:bg-amber-600 hover:scale-105 transition-all text-[9px] px-2 py-0.5 bg-amber-500 text-white rounded-md font-bold flex items-center gap-1 border border-amber-600 shadow-md"
+              >
+                <FileEdit className="w-2.5 h-2.5" /> SUBMIT FOR REVIEW
+              </button>
+            )}
             {canView && (
               <button 
                 onClick={handleMainView}

@@ -1,6 +1,7 @@
 const Document = require('../models/Document');
 const User = require('../models/User');
 const Folder = require('../models/Folder');
+const Comment = require('../models/Comment');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
@@ -111,6 +112,7 @@ const uploadDocument = async (req, res) => {
             folderId: folderId || null,
             storageType,
             tags: tags ? (typeof tags === 'string' ? JSON.parse(tags) : tags) : [],
+            status: 'Draft',
             versions: [{
                 versionNumber: 1,
                 fileUrl: ''
@@ -915,6 +917,79 @@ const getPublicDocument = async (req, res) => {
     }
 };
 
+const updateDocumentStatus = async (req, res) => {
+    try {
+        const { status } = req.body;
+        const id = req.params.id;
+        
+        const document = await Document.findById(id).populate('uploadedBy', 'name email');
+        if (!document) return res.status(404).json({ message: 'Document not found' });
+
+        // Permission check
+        const isAdmin = req.user.role === 'Admin';
+        const isOwner = document.uploadedBy._id.toString() === req.user.id;
+        if (!isAdmin && status === 'Approved') {
+            return res.status(403).json({ message: 'Only admins can approve documents' });
+        }
+
+        document.status = status;
+        document.updatedAt = Date.now();
+        await document.save();
+
+        // Notify user if status changed to Approved or Pending Review
+        if (status === 'Approved' || status === 'Pending Review') {
+            try {
+                await sendEmail({
+                    email: document.uploadedBy.email,
+                    subject: `DocVault - Document Status Updated: ${status}`,
+                    html: `<p>Hello ${document.uploadedBy.name},</p>
+                           <p>The status of your document <b>${document.title}</b> has been updated to <b>${status}</b>.</p>`
+                });
+            } catch (err) { console.error('Notify error:', err); }
+        }
+
+        res.json({ message: 'Status updated successfully', document });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};
+
+const getAnnotations = async (req, res) => {
+    try {
+        const annotations = await Comment.find({ documentId: req.params.id })
+            .populate('author', 'name avatar')
+            .sort({ createdAt: 1 });
+        res.json(annotations);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};
+
+const addAnnotation = async (req, res) => {
+    try {
+        const { text, position, type } = req.body;
+        const newAnnotation = new Comment({
+            documentId: req.params.id,
+            author: req.user.id,
+            text,
+            position,
+            type
+        });
+        await newAnnotation.save();
+        const populated = await newAnnotation.populate('author', 'name avatar');
+        
+        // Broadcast via Socket.io
+        const io = req.app.get('io');
+        if (io) {
+            io.to(req.params.id).emit('annotation_added', populated);
+        }
+
+        res.status(201).json(populated);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};
+
 module.exports = { 
     uploadDocument, 
     getDocuments, 
@@ -926,6 +1001,9 @@ module.exports = {
     unshareDocument,
     updateDocumentMetadata,
     updateDocumentVersion,
+    updateDocumentStatus,
+    getAnnotations,
+    addAnnotation,
     syncLocalFiles,
     openInDesktop,
     getPublicDocument

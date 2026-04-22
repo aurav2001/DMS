@@ -10,6 +10,9 @@ const {
     unshareDocument,
     updateDocumentMetadata,
     updateDocumentVersion,
+    updateDocumentStatus,
+    getAnnotations,
+    addAnnotation,
     syncLocalFiles,
     openInDesktop,
     getPublicDocument
@@ -30,6 +33,9 @@ router.patch('/:id/star', auth, toggleStar);
 router.post('/:id/share', auth, shareDocument);
 router.post('/:id/unshare', auth, unshareDocument);
 router.patch('/:id', auth, updateDocumentMetadata);
+router.patch('/:id/status', auth, updateDocumentStatus);
+router.get('/:id/annotations', auth, getAnnotations);
+router.post('/:id/annotations', auth, addAnnotation);
 router.get('/:id/version/:versionNumber', auth, downloadDocument);
 router.get('/:id/version:versionNumber', auth, downloadDocument); // Handle malformed URLs with colon
 router.post('/:id/version', auth, (req, res, next) => {

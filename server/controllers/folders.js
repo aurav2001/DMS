@@ -64,7 +64,7 @@ exports.getFolderContents = async (req, res) => {
         // Note: For root view, the logic above ensures only top-level shared items appear.
 
         const folders = await Folder.find(folderQuery);
-        const documents = await Document.find(docQuery);
+        const documents = await Document.find(docQuery).populate('uploadedBy', 'name email avatar');
 
         res.json({ folders, documents });
     } catch (err) {

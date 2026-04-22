@@ -4,7 +4,7 @@ import { X, Save, FileText, Loader2, Type, Undo2, Redo2, Bold, Italic, Underline
   Link2, Image, Table, Minus, Plus, ChevronDown, Palette, Highlighter, 
   Strikethrough, Subscript, Superscript, IndentIncrease, IndentDecrease,
   Printer, ZoomIn, ZoomOut, FileDown, Copy, Scissors, Clipboard, Share2, Check, Trash, Monitor, ExternalLink,
-  Eye, Lock, Shield, Download // ✅ Added missing icons for Premium View
+  Eye, Lock, Shield, Download, MessageSquare // ✅ Added missing icon
 } from 'lucide-react';
 import mammoth from 'mammoth';
 import { PDFDocument, rgb } from 'pdf-lib';
@@ -24,6 +24,10 @@ const COLORS = [
   '#cc0000', '#e69138', '#f1c232', '#6aa84f', '#45818e', '#3d85c6', '#674ea7', '#a64d79',
   '#990000', '#b45f06', '#bf9000', '#38761d', '#134f5c', '#0b5394', '#351c75', '#741b47',
 ];
+
+import usePresence from '../../hooks/usePresence';
+import { useAuth } from '../../context/AuthContext';
+import CommentSidebar from './CommentSidebar';
 
 const MSWordOnline = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
     const [loading, setLoading] = useState(true);
@@ -51,6 +55,9 @@ const MSWordOnline = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
     const editorRefs = useRef([]);
     const fileInputRef = useRef(null);
     const selectionRef = useRef(null);
+    const { user } = useAuth();
+    const presence = usePresence(doc._id, user);
+    const [showComments, setShowComments] = useState(false);
 
     const tabs = ['File', 'Home', 'Insert', 'Layout', 'Review', 'View'];
 
@@ -573,6 +580,27 @@ const MSWordOnline = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
         }
     };
 
+    const handleApprove = async () => {
+        try {
+            setSaving(true);
+            const token = localStorage.getItem('token');
+            await axios.patch(`${API_BASE}/documents/${doc._id}/status`, { status: 'Approved' }, {
+                headers: { 'x-auth-token': token }
+            });
+            toast.success('Document Approved Successfully!');
+            if (onRefresh) onRefresh();
+            onClose(); 
+        } catch (err) {
+            toast.error('Approval failed');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const toggleReadOnly = () => {
+        setReadOnlyMode(!readOnlyMode);
+    };
+
     const ToolbarButton = ({ icon: Icon, label, onClick, active, className = '', showLabel = false }) => (
         <button
             onMouseDown={(e) => e.preventDefault()}
@@ -837,6 +865,38 @@ const MSWordOnline = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
                             <ExternalLink className="w-3 h-3 opacity-50" />
                         </button>
 
+                        {/* Real-time Presence */}
+                        <div className="flex -space-x-1.5 overflow-hidden mx-2">
+                            {presence.map((p, i) => (
+                                <div 
+                                    key={i} 
+                                    title={`${p.name} is editing`}
+                                    className="w-7 h-7 rounded-full ring-2 ring-[#185abd] bg-white flex items-center justify-center text-[#185abd] text-[9px] font-black"
+                                >
+                                    {p.avatar ? <img src={p.avatar} alt="" className="h-full w-full rounded-full" /> : p.name[0].toUpperCase()}
+                                </div>
+                            ))}
+                        </div>
+
+                        <button 
+                            onClick={() => setShowComments(!showComments)}
+                            className={`flex items-center gap-2 px-3 py-2 ${showComments ? 'bg-white text-[#185abd]' : 'bg-white/10 text-white'} hover:bg-white/20 text-xs font-bold rounded-lg border border-white/20 transition-all active:scale-95`}
+                        >
+                            <MessageSquare className="w-4 h-4" />
+                            <span className="hidden sm:inline">COLLABORATE</span>
+                        </button>
+
+                        {user?.role === 'Admin' && doc.status === 'Pending Review' && (
+                            <button 
+                                onClick={handleApprove}
+                                disabled={saving}
+                                className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-black rounded-lg transition-all shadow-lg active:scale-95"
+                            >
+                                <Check className="w-4 h-4" />
+                                <span>APPROVE DOCUMENT</span>
+                            </button>
+                        )}
+
                         {!readOnlyMode && (
                             <button 
                                 onClick={handleSave} 
@@ -929,53 +989,64 @@ const MSWordOnline = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
                 )}
 
                 {/* Content Area */}
-                <div className="flex-1 overflow-auto bg-[#f3f2f1] p-6 flex flex-col items-center relative scroll-smooth thin-scrollbar shadow-inner">
-                    {loading ? (
-                        <div className="flex flex-col items-center justify-center text-slate-500 gap-4 mt-20">
-                            <Loader2 className="w-12 h-12 animate-spin text-[#185abd]" />
-                            <p className="font-medium">Opening document...</p>
-                        </div>
-                    ) : (
-                        <div className="w-full flex flex-col items-center">
-                            {/* High-Fidelity Preview (Reading Only) */}
-                            {readOnlyMode && hfStatus !== 'error' && (
-                                <div id="high-fidelity-view" className="bg-white shadow-[0_10px_40px_rgba(0,0,0,0.1)] rounded-sm mb-8" style={{ width: '816px', minHeight: '1056px' }}></div>
-                            )}
+                <div className="flex flex-1 overflow-hidden">
+                    <div className="flex-1 overflow-auto bg-[#f3f2f1] p-6 flex flex-col items-center relative scroll-smooth thin-scrollbar shadow-inner">
+                        {loading ? (
+                            <div className="flex flex-col items-center justify-center text-slate-500 gap-4 mt-20">
+                                <Loader2 className="w-12 h-12 animate-spin text-[#185abd]" />
+                                <p className="font-medium">Opening document...</p>
+                            </div>
+                        ) : (
+                            <div className="w-full flex flex-col items-center">
+                                {/* High-Fidelity Preview (Reading Only) */}
+                                {readOnlyMode && hfStatus !== 'error' && (
+                                    <div id="high-fidelity-view" className="bg-white shadow-[0_10px_40px_rgba(0,0,0,0.1)] rounded-sm mb-8" style={{ width: '816px', minHeight: '1056px' }}></div>
+                                )}
 
-                            {/* Main Editable/Fallback Content */}
-                            {(!readOnlyMode || hfStatus === 'error') && pages.map((page, idx) => (
-                                <div key={page.id} className="relative mb-8 flex flex-col items-center">
-                                    <div 
-                                        ref={el => editorRefs.current[idx] = el}
-                                        contentEditable={!readOnlyMode}
-                                        suppressContentEditableWarning={true}
-                                        onInput={(e) => {
-                                            const newPages = [...pages];
-                                            newPages[idx].content = e.currentTarget.innerHTML;
-                                            setPages(newPages);
-                                        }}
-                                        onFocus={() => setFocusedPageIdx(idx)}
-                                        onClick={handleEditorClick}
-                                        className={`bg-white shadow-[0_10px_40px_rgba(0,0,0,0.1)] outline-none ${readOnlyMode ? 'cursor-default' : 'cursor-text'}`}
-                                        style={{
-                                            width: '816px',
-                                            minHeight: '1056px',
-                                            padding: '96px 96px',
-                                            fontFamily: currentFont + ', "Segoe UI", Calibri, sans-serif',
-                                            fontSize: currentSize + 'pt',
-                                            lineHeight: '1.5',
-                                            color: '#323130',
-                                            boxSizing: 'border-box',
-                                            overflow: 'hidden',
-                                            zoom: zoom / 100,
-                                        }}
-                                        dangerouslySetInnerHTML={{ __html: page.content }}
-                                    />
-                                    <div className="mt-2 text-[10px] text-slate-400 font-bold uppercase tracking-wider">Page {idx+1} of {pages.length}</div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
+                                {/* Main Editable/Fallback Content */}
+                                {(!readOnlyMode || hfStatus === 'error') && pages.map((page, idx) => (
+                                    <div key={page.id} className="relative mb-8 flex flex-col items-center">
+                                        <div 
+                                            ref={el => editorRefs.current[idx] = el}
+                                            contentEditable={!readOnlyMode}
+                                            suppressContentEditableWarning={true}
+                                            onInput={(e) => {
+                                                const newPages = [...pages];
+                                                newPages[idx].content = e.currentTarget.innerHTML;
+                                                setPages(newPages);
+                                            }}
+                                            onFocus={() => setFocusedPageIdx(idx)}
+                                            onClick={handleEditorClick}
+                                            className={`bg-white shadow-[0_10px_40px_rgba(0,0,0,0.1)] outline-none ${readOnlyMode ? 'cursor-default' : 'cursor-text'}`}
+                                            style={{
+                                                width: '816px',
+                                                minHeight: '1056px',
+                                                padding: '96px 96px',
+                                                fontFamily: currentFont + ', "Segoe UI", Calibri, sans-serif',
+                                                fontSize: currentSize + 'pt',
+                                                lineHeight: '1.5',
+                                                color: '#323130',
+                                                boxSizing: 'border-box',
+                                                overflow: 'hidden',
+                                                zoom: zoom / 100,
+                                            }}
+                                            dangerouslySetInnerHTML={{ __html: page.content }}
+                                        />
+                                        <div className="mt-2 text-[10px] text-slate-400 font-bold uppercase tracking-wider">Page {idx+1} of {pages.length}</div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Collaboration Sidebar */}
+                    <AnimatePresence>
+                        {showComments && (
+                            <div className="flex-shrink-0">
+                                <CommentSidebar docId={doc._id} user={user} />
+                            </div>
+                        )}
+                    </AnimatePresence>
                 </div>
 
                 {/* Premium Footer */}
