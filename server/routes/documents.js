@@ -15,7 +15,8 @@ const {
     addAnnotation,
     syncLocalFiles,
     openInDesktop,
-    getPublicDocument
+    getPublicDocument,
+    reuploadDocument
 } = require('../controllers/documents');
 const { handleWebDAV } = require('../controllers/webdav');
 const auth = require('../middleware/auth');
@@ -47,6 +48,8 @@ router.post('/:id/version', auth, (req, res, next) => {
         next();
     }
 }, updateDocumentVersion);
+
+router.put('/:id/reupload', auth, upload.single('file'), reuploadDocument);
 
 router.post('/sync', auth, syncLocalFiles);
 router.post('/:id/open-in-desktop', auth, openInDesktop);

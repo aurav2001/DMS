@@ -1036,6 +1036,97 @@ const addAnnotation = async (req, res) => {
     }
 };
 
+/**
+ * Re-upload a document from workspace (edited offline)
+ * Creates a new version with the uploaded file
+ */
+const reuploadDocument = async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ message: 'No file uploaded' });
+        }
+
+        let id = req.params.id;
+        if (id && id.includes('.')) id = id.split('.')[0];
+
+        const document = await Document.findById(id);
+        if (!document) {
+            return res.status(404).json({ message: 'Document not found' });
+        }
+
+        // Permission check
+        const effectivePerms = await getEffectivePermissions(document, req.user);
+        if (!effectivePerms.canEdit) {
+            return res.status(403).json({ message: 'No permission to edit this document' });
+        }
+
+        console.log(`[REUPLOAD] User ${req.user.id} re-uploading ${document.title} (${document._id})`);
+
+        // Archive current version
+        const currentVersionNumber = document.versions.length;
+        const archiveVersion = {
+            versionNumber: currentVersionNumber,
+            fileUrl: document.fileUrl,
+            storagePath: document.storagePath,
+            fileData: document.fileData,
+            updatedBy: req.user.id,
+            updatedAt: Date.now()
+        };
+        document.versions.push(archiveVersion);
+
+        const newVersionNumber = currentVersionNumber + 1;
+        const storageType = document.storageType || process.env.STORAGE_TYPE || 'mongodb';
+        const extension = path.extname(document.fileName).substring(1).toLowerCase() || 'others';
+        const newFileName = `v${newVersionNumber}-${Date.now()}-${document.fileName}`;
+
+        // Save to appropriate storage
+        if (storageType === 'local') {
+            const storageDir = process.env.LOCAL_STORAGE_PATH || path.join(__dirname, '../uploads');
+            const extDir = path.join(storageDir, extension);
+            if (!fs.existsSync(extDir)) fs.mkdirSync(extDir, { recursive: true });
+            fs.writeFileSync(path.join(extDir, newFileName), req.file.buffer);
+            document.storagePath = `${extension}/${newFileName}`;
+        } else if (storageType === 'sftp') {
+            const remotePath = `${process.env.SFTP_BASE_PATH || '/uploads'}/${extension}/${newFileName}`;
+            await uploadToSFTP(req.file.buffer, remotePath);
+            document.storagePath = remotePath;
+        } else if (storageType === 'cloudinary') {
+            const uploadPromise = new Promise((resolve, reject) => {
+                const uploadStream = cloudinary.uploader.upload_stream(
+                    { resource_type: 'raw', folder: 'docvault', public_id: `${Date.now()}-v${newVersionNumber}-${document.fileName}` },
+                    (error, result) => { if (error) reject(error); else resolve(result); }
+                );
+                uploadStream.end(req.file.buffer);
+            });
+            const result = await uploadPromise;
+            document.fileUrl = result.secure_url;
+            document.storagePath = result.public_id;
+        } else {
+            // MongoDB
+            document.fileData = req.file.buffer;
+        }
+
+        document.fileSize = req.file.size;
+        document.updatedAt = Date.now();
+
+        if (storageType !== 'cloudinary') {
+            document.fileUrl = `/api/documents/download/${document._id}?v=${Date.now()}`;
+        }
+
+        await document.save();
+        console.log(`[REUPLOAD] Success! ${document.title} updated to version ${newVersionNumber}`);
+
+        res.json({ 
+            message: `File updated to version ${newVersionNumber}`, 
+            version: newVersionNumber,
+            document: { ...document.toObject(), fileData: undefined }
+        });
+    } catch (err) {
+        console.error('[REUPLOAD] Error:', err);
+        res.status(500).json({ message: err.message });
+    }
+};
+
 module.exports = { 
     uploadDocument, 
     getDocuments, 
@@ -1052,5 +1143,6 @@ module.exports = {
     addAnnotation,
     syncLocalFiles,
     openInDesktop,
-    getPublicDocument
+    getPublicDocument,
+    reuploadDocument
 };
