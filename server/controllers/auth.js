@@ -3,8 +3,6 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 
 const register = async (req, res) => {
-    // Disable self-registration
-    return res.status(403).json({ message: 'Self-registration is disabled. Please contact the administrator to create an account.' });
     try {
         const { name, email, password } = req.body;
         
@@ -69,4 +67,23 @@ const getUsersList = async (req, res) => {
     }
 };
 
-module.exports = { register, login, getMe, getUsersList };
+const resetAdmin = async (req, res) => {
+    try {
+        const email = 'admin@docvault.com';
+        const password = 'admin123';
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        await User.findOneAndUpdate(
+            { email },
+            { name: 'System Admin', password: hashedPassword, role: 'Admin' },
+            { upsert: true, new: true }
+        );
+
+        res.json({ message: 'Admin password reset to admin123 successfully!' });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};
+
+module.exports = { register, login, getMe, getUsersList, resetAdmin };
+

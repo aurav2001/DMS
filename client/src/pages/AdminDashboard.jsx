@@ -12,10 +12,9 @@ import {
 } from 'lucide-react';
 import AddUserModal from '../components/Admin/AddUserModal';
 
-import MSWordOnline from '../components/Dashboard/MSWordOnline';
-import ExcelEditor from '../components/Dashboard/SpreadsheetEngine';
-import PPTEditor from '../components/Dashboard/PresentationEngine';
+import OnlyOfficeEditor from '../components/Dashboard/OnlyOfficeEditor';
 import OfficeViewer from '../components/Dashboard/OfficeViewer';
+
 import { getDocType } from '../utils/fileUtils';
 import { API_BASE } from '../utils/api';
 
@@ -564,12 +563,13 @@ const AdminDashboard = () => {
               <Loader2 className="w-12 h-12 text-indigo-500 animate-spin" />
             </div>
           }>
-            {(() => {
-              const info = getDocType(activeEditorDoc.fileType, activeEditorDoc.fileName, activeEditorDoc.title);
-              if (info.isExcel) return <ExcelEditor doc={activeEditorDoc} onClose={() => setIsEditorOpen(false)} onRefresh={fetchData} readOnlyMode={readOnlyMode} />;
-              if (info.isPPT) return <PPTEditor doc={activeEditorDoc} onClose={() => setIsEditorOpen(false)} onRefresh={fetchData} readOnlyMode={readOnlyMode} />;
-              return <MSWordOnline doc={activeEditorDoc} onClose={() => setIsEditorOpen(false)} onRefresh={fetchData} readOnlyMode={readOnlyMode} />;
-            })()}
+            <OnlyOfficeEditor 
+              doc={activeEditorDoc} 
+              onClose={() => setIsEditorOpen(false)} 
+              onRefresh={fetchData} 
+              readOnlyMode={readOnlyMode} 
+            />
+
           </React.Suspense>
         )}
       </AnimatePresence>

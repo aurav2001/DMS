@@ -34,12 +34,16 @@ const documentRoutes = require('./routes/documents');
 const folderRoutes = require('./routes/folders');
 const adminRoutes = require('./routes/admin');
 const publicRoutes = require('./routes/public');
+const onlyofficeRoutes = require('./routes/onlyoffice');
+
 
 app.use('/api/auth', authRoutes);
 app.use('/api/documents', documentRoutes);
 app.use('/api/folders', folderRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/public', publicRoutes);
+app.use('/api/onlyoffice', onlyofficeRoutes);
+
 
 // DB Connection
 console.log('Attempting to connect to MongoDB...');
@@ -85,8 +89,19 @@ const io = initSocket(server);
 // Attach io to app to use it in controllers if needed
 app.set('io', io);
 
+// Global Error Handler for Debugging
+app.use((err, req, res, next) => {
+    console.error('[Global Error]', err);
+    res.status(500).json({ 
+        message: 'Internal Server Error', 
+        error: err.message,
+        stack: process.env.NODE_ENV === 'production' ? '🥞' : err.stack 
+    });
+});
+
 if (process.env.NODE_ENV !== 'production') {
     server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 }
 
 module.exports = app;
+

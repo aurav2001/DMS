@@ -1,0 +1,11 @@
+version: '3.8'
+services:
+  onlyoffice:
+    image: onlyoffice/documentserver
+    container_name: onlyoffice-ds
+    ports:
+      - "8080:80"
+    restart: always
+    environment:
+      - JWT_ENABLED=false
+      - ALLOW_PRIVATE_IP_ADDRESS=true

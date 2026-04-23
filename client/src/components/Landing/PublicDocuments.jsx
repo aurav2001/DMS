@@ -3,9 +3,9 @@ import axios from 'axios';
 import { Search, Eye, FileText, Database, EyeOff, X, FileImage, FileVideo, FileAudio, Archive, File, FileSpreadsheet, Presentation, FileCode } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
-import MSWordOnline from '../Dashboard/MSWordOnline';
-import SpreadsheetEngine from '../Dashboard/SpreadsheetEngine';
+import OnlyOfficeEditor from '../Dashboard/OnlyOfficeEditor';
 import OfficeViewer from '../Dashboard/OfficeViewer';
+
 import { getDocType, getIconColor } from '../../utils/fileUtils';
 
 import { API_BASE } from '../../utils/api';
@@ -212,19 +212,19 @@ const PublicDocuments = () => {
       <AnimatePresence>
         {viewState.isOpen && viewState.doc && (
           <>
-            {(viewState.doc.fileType?.includes('word') || viewState.doc.fileType?.includes('officedocument')) ? (
-              <MSWordOnline 
-                doc={viewState.doc} 
-                onClose={() => setViewState({ isOpen: false, doc: null })} 
-                readOnlyMode={true} 
-              />
-            ) : (viewState.doc.fileType?.includes('excel') || viewState.doc.fileType?.includes('sheet') || viewState.doc.fileType?.includes('csv')) ? (
-              <SpreadsheetEngine 
-                doc={viewState.doc} 
-                onClose={() => setViewState({ isOpen: false, doc: null })} 
-                readOnlyMode={true} 
-              />
-            ) : (
+            {(() => {
+              const info = getDocType(viewState.doc.fileType, viewState.doc.fileName, viewState.doc.title);
+              if (info.isWord || info.isExcel || info.isPPT) {
+                return (
+                  <OnlyOfficeEditor 
+                    doc={viewState.doc} 
+                    onClose={() => setViewState({ isOpen: false, doc: null })} 
+                    onRefresh={() => {}} 
+                    readOnlyMode={true} 
+                  />
+                );
+              }
+              return (
                 <div className="fixed inset-0 z-[200] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
                     <div className="relative w-full max-w-5xl h-[85vh] bg-white rounded-xl overflow-hidden shadow-2xl flex flex-col">
                         <div className="h-14 border-b flex items-center justify-between px-6 bg-slate-50">
@@ -238,7 +238,9 @@ const PublicDocuments = () => {
                         />
                     </div>
                 </div>
-            )}
+              );
+            })()}
+
           </>
         )}
       </AnimatePresence>

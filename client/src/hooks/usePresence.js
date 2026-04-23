@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import { io } from 'socket.io-client';
-import { SOCKET_URL } from '../utils/api';
+import { SOCKET_URL, ENABLE_SOCKETS } from '../utils/api';
 
 const usePresence = (location, user) => {
     const [presence, setPresence] = useState([]);
     const [socket, setSocket] = useState(null);
 
     useEffect(() => {
-        if (!location || !user) return;
+        if (!location || !user || !ENABLE_SOCKETS) return;
 
         const newSocket = io(SOCKET_URL);
         setSocket(newSocket);

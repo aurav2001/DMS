@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Send, User, MessageSquare, X, Clock } from 'lucide-react';
 import axios from 'axios';
-import { API_BASE, SOCKET_URL } from '../../utils/api';
+import { API_BASE, SOCKET_URL, ENABLE_SOCKETS } from '../../utils/api';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { io } from 'socket.io-client';
@@ -15,6 +15,8 @@ const CommentSidebar = ({ docId, user }) => {
         fetchComments();
 
         // Socket setup for real-time comments
+        if (!ENABLE_SOCKETS) return;
+
         const socket = io(SOCKET_URL);
         socket.emit('join_location', { userId: user?._id, name: user?.name, location: docId });
 

@@ -120,8 +120,10 @@ exports.getFolderContents = async (req, res) => {
 
         res.json({ folders, documents: docsWithPerms });
     } catch (err) {
+        console.error('[GetFolderContents Error]', err);
         res.status(500).json({ message: 'Error fetching contents', error: err.message });
     }
+
 };
 
 // Share a folder

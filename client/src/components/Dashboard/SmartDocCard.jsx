@@ -29,10 +29,9 @@ import { useAuth } from '../../context/AuthContext';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 
-import MSWordOnline from './MSWordOnline';
-import ExcelEditor from './SpreadsheetEngine';
-import PPTEditor from './PresentationEngine';
+import OnlyOfficeEditor from './OnlyOfficeEditor';
 import OfficeViewer from './OfficeViewer';
+
 import { getDocType, getIconColor, getBgColor } from '../../utils/fileUtils';
 import { API_BASE } from '../../utils/api';
 
@@ -493,19 +492,13 @@ const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
               <Loader2 className="w-12 h-12 text-indigo-500 animate-spin" />
             </div>
           }>
-            {isExcel ? (
-              <ExcelEditor doc={doc} onClose={() => setIsEditorOpen(false)} onRefresh={onRefresh} readOnlyMode={readOnlyMode} />
-            ) : isPPT ? (
-              <PPTEditor doc={doc} onClose={() => setIsEditorOpen(false)} onRefresh={onRefresh} readOnlyMode={readOnlyMode} />
-            ) : isWord || isPdf ? (
-              <MSWordOnline doc={doc} onClose={() => setIsEditorOpen(false)} onRefresh={onRefresh} readOnlyMode={readOnlyMode} />
-            ) : (
-              <div className="fixed inset-0 z-[200] bg-white flex flex-col items-center justify-center p-10">
-                <h2 className="text-xl font-bold mb-4">Unsupported Format</h2>
-                <p className="text-gray-500 mb-6">The editor doesn't support this specific file type yet.</p>
-                <button onClick={() => setIsEditorOpen(false)} className="px-6 py-2 bg-[#185abd] text-white rounded">Close</button>
-              </div>
-            )}
+            <OnlyOfficeEditor 
+              doc={doc} 
+              onClose={() => setIsEditorOpen(false)} 
+              onRefresh={onRefresh} 
+              readOnlyMode={readOnlyMode} 
+            />
+
           </React.Suspense>
         )}
       </AnimatePresence>
