@@ -1,129 +1,94 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { X, Loader2, ShieldCheck, FileEdit } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Loader2, ShieldCheck, FileEdit, Download, RefreshCw, Shield, ExternalLink, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { SOCKET_URL } from '../../utils/api';
+import { API_BASE, SOCKET_URL } from '../../utils/api';
+import axios from 'axios';
+import toast from 'react-hot-toast';
 
 const OnlyOfficeEditor = ({ doc, onClose, onRefresh, readOnlyMode = false }) => {
-    const editorRef = useRef(null);
     const [loading, setLoading] = useState(true);
+    const [engine, setEngine] = useState('microsoft');
+    const [fileUrl, setFileUrl] = useState(null);
+    const [error, setError] = useState(null);
     const { user } = useAuth();
-    
+
+    // Get a publicly accessible URL for the document
     useEffect(() => {
-        const scriptId = 'onlyoffice-api-script';
-        let script = document.getElementById(scriptId);
-        
-        const initEditor = () => {
-            if (!window.DocsAPI) {
-                console.error('ONLYOFFICE DocsAPI not found');
-                return;
-            }
-
-            const backendUrl = SOCKET_URL; // Using the root backend URL
-            const onlyofficeUrl = import.meta.env.VITE_ONLYOFFICE_URL || 'http://localhost:8080';
-            
-            // Critical Fix for Docker: If ONLYOFFICE is local, it needs to reach the backend via host.docker.internal
-            let backendUrlForOnlyOffice = SOCKET_URL;
-            if (onlyofficeUrl.includes('localhost') || onlyofficeUrl.includes('127.0.0.1')) {
-                backendUrlForOnlyOffice = backendUrlForOnlyOffice.replace('localhost', 'host.docker.internal').replace('127.0.0.1', 'host.docker.internal');
-            }
-            
-            // File type detection for ONLYOFFICE
-            const ext = doc.fileName.split('.').pop().toLowerCase();
-            let documentType = 'word'; // default
-            if (['xls', 'xlsx', 'csv', 'ods'].includes(ext)) documentType = 'cell';
-            if (['ppt', 'pptx', 'odp'].includes(ext)) documentType = 'slide';
-            if (ext === 'pdf') documentType = 'pdf';
- 
-            // Document unique key for ONLYOFFICE (changes when file changes)
-            const documentKey = `${doc._id}_${new Date(doc.updatedAt || Date.now()).getTime()}`;
- 
-            const config = {
-                document: {
-                    fileType: ext,
-                    key: documentKey,
-                    title: doc.title || doc.fileName,
-                    url: `${backendUrlForOnlyOffice}/api/onlyoffice/download/${doc._id}`,
-                    permissions: {
-                        edit: !readOnlyMode && ext !== 'pdf',
-                        download: true,
-                        print: true,
-                        comment: true,
-                        fillForms: !readOnlyMode,
-                        review: !readOnlyMode
-                    }
-                },
-                documentType: documentType,
-                editorConfig: {
-                    callbackUrl: `${backendUrlForOnlyOffice}/api/onlyoffice/callback/${doc._id}`,
-                    user: {
-                        id: user?._id || "guest",
-                        name: user?.name || "Guest User"
-                    },
-                    mode: (readOnlyMode || ext === 'pdf') ? 'view' : 'edit',
-                    lang: 'en',
-                    customization: {
-                        forcesave: true,
-                        autosave: true,
-                        chat: true,
-                        comments: true,
-                        compactToolbar: false,
-                        help: false,
-                        toolbarNoTabs: false
-                    }
-                },
-                height: "100%",
-                width: "100%",
-                events: {
-                    "onDocumentReady": () => setLoading(false),
-                    "onError": (e) => console.error("ONLYOFFICE Error:", e),
-                }
-            };
-
+        const getFileUrl = async () => {
             try {
-                // Initialize ONLYOFFICE
-                new window.DocsAPI.DocEditor("onlyoffice-container", config);
+                setLoading(true);
+                setError(null);
+
+                // If doc already has a public fileUrl (cloud storage), use it directly
+                if (doc.fileUrl && doc.fileUrl.startsWith('http')) {
+                    setFileUrl(doc.fileUrl);
+                    setLoading(false);
+                    return;
+                }
+
+                // For SFTP/MongoDB stored files, use our backend download endpoint
+                // Microsoft/Google viewers need a publicly accessible URL
+                const backendUrl = SOCKET_URL;
+                const publicUrl = `${backendUrl}/api/onlyoffice/download/${doc._id}`;
+                setFileUrl(publicUrl);
+                setLoading(false);
             } catch (err) {
-                console.error("Failed to initialize ONLYOFFICE:", err);
+                console.error('Failed to get file URL:', err);
+                setError('Could not prepare file for viewing');
+                setLoading(false);
             }
         };
 
-        if (!script) {
-            script = document.createElement('script');
-            script.id = scriptId;
-            script.src = `${import.meta.env.VITE_ONLYOFFICE_URL || 'http://localhost:8080'}/web-apps/apps/api/documents/api.js`;
-            script.async = true;
-            script.onload = initEditor;
-            document.head.appendChild(script);
-        } else {
-            // If script already exists, just init
-            // Note: If DocsAPI is already there, we might need a small timeout to ensure container is ready
-            setTimeout(initEditor, 100);
-        }
+        getFileUrl();
+    }, [doc]);
 
-        return () => {
-            // No explicit cleanup needed for DocsAPI usually, 
-            // but we might want to clear the container
-            const container = document.getElementById("onlyoffice-container");
-            if (container) container.innerHTML = "";
-        };
-    }, [doc, readOnlyMode, user]);
+    const encodedUrl = fileUrl ? encodeURIComponent(fileUrl) : '';
+    const microsoftUrl = `https://view.officeapps.live.com/op/embed.aspx?src=${encodedUrl}`;
+    const googleUrl = `https://docs.google.com/viewer?url=${encodedUrl}&embedded=true`;
+    const viewerUrl = engine === 'microsoft' ? microsoftUrl : googleUrl;
+
+    const ext = doc.fileName?.split('.').pop().toLowerCase() || '';
+    const isOfficeFile = ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'odt', 'ods', 'odp'].includes(ext);
+    const isPdf = ext === 'pdf';
+
+    const handleDownloadForEdit = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            const response = await axios.get(`${API_BASE}/documents/download/${doc._id}`, {
+                responseType: 'blob',
+                headers: { 'x-auth-token': token }
+            });
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', doc.fileName || doc.title);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+            toast.success('File downloaded! Edit it in your desktop app, then re-upload.', { duration: 5000, icon: '📝' });
+        } catch (err) {
+            console.error('Download failed:', err);
+            toast.error('Download failed');
+        }
+    };
 
     return (
         <div className="fixed inset-0 z-[1000] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-2 sm:p-4">
             <div className="bg-white w-full h-full rounded-2xl overflow-hidden flex flex-col shadow-2xl border border-white/10">
                 {/* Modern Header */}
-                <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between border-b border-slate-800">
-                    <div className="flex items-center gap-4">
-                        <div className="p-2.5 bg-blue-500/10 rounded-xl border border-blue-500/20">
+                <div className="bg-slate-900 text-white px-4 sm:px-6 py-3 flex items-center justify-between border-b border-slate-800">
+                    <div className="flex items-center gap-3">
+                        <div className={`p-2 rounded-xl border ${engine === 'microsoft' ? 'bg-[#185abd]/20 border-[#185abd]/30' : 'bg-green-500/10 border-green-500/20'}`}>
                             {readOnlyMode ? (
-                                <ShieldCheck className="w-6 h-6 text-blue-400" />
+                                <ShieldCheck className="w-5 h-5 text-blue-400" />
                             ) : (
-                                <FileEdit className="w-6 h-6 text-emerald-400" />
+                                <FileEdit className="w-5 h-5 text-emerald-400" />
                             )}
                         </div>
                         <div>
                             <div className="flex items-center gap-2">
-                                <h2 className="font-bold text-lg tracking-tight">{doc.title || doc.fileName}</h2>
+                                <h2 className="font-bold text-sm sm:text-lg tracking-tight truncate max-w-[150px] sm:max-w-md">{doc.title || doc.fileName}</h2>
                                 {readOnlyMode && (
                                     <span className="bg-blue-500/20 text-blue-400 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider border border-blue-500/20">
                                         Read Only
@@ -132,32 +97,59 @@ const OnlyOfficeEditor = ({ doc, onClose, onRefresh, readOnlyMode = false }) => 
                             </div>
                             <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-2">
                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                                ONLYOFFICE Document Server Connected
+                                {engine === 'microsoft' ? 'Microsoft Office Viewer' : 'Google Docs Viewer'}
                             </p>
                         </div>
                     </div>
                     
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
+                        {/* Engine Switcher */}
+                        {isOfficeFile && (
+                            <div className="hidden sm:flex bg-slate-800 rounded-lg p-1 mr-2 border border-slate-700">
+                                <button 
+                                    onClick={() => { setEngine('microsoft'); setLoading(true); setTimeout(() => setLoading(false), 1000); }}
+                                    className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${engine === 'microsoft' ? 'bg-[#185abd] text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}
+                                >
+                                    MS Office
+                                </button>
+                                <button 
+                                    onClick={() => { setEngine('google'); setLoading(true); setTimeout(() => setLoading(false), 1000); }}
+                                    className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${engine === 'google' ? 'bg-green-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}
+                                >
+                                    Google
+                                </button>
+                            </div>
+                        )}
+
+                        {!readOnlyMode && (
+                            <button 
+                                onClick={handleDownloadForEdit}
+                                className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-all border border-emerald-500 flex items-center gap-1.5"
+                            >
+                                <Download className="w-3.5 h-3.5" /> Edit Offline
+                            </button>
+                        )}
+
                         <button 
                             onClick={() => {
-                                onRefresh();
+                                if (onRefresh) onRefresh();
                                 onClose();
                             }}
-                            className="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all border border-slate-700 flex items-center gap-2"
+                            className="bg-slate-800 hover:bg-slate-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-all border border-slate-700 flex items-center gap-1.5"
                         >
-                            Save & Close
+                            Close
                         </button>
                         <button 
                             onClick={onClose}
-                            className="p-2 hover:bg-white/10 rounded-xl transition-all text-slate-400 hover:text-white"
+                            className="p-1.5 hover:bg-white/10 rounded-xl transition-all text-slate-400 hover:text-white"
                         >
-                            <X className="w-6 h-6" />
+                            <X className="w-5 h-5" />
                         </button>
                     </div>
                 </div>
 
-                {/* Editor Area */}
-                <div className="flex-1 relative bg-slate-50">
+                {/* Editor/Viewer Area */}
+                <div className="flex-1 relative bg-slate-100">
                     {loading && (
                         <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-50/90 z-10 backdrop-blur-sm">
                             <div className="relative">
@@ -166,13 +158,72 @@ const OnlyOfficeEditor = ({ doc, onClose, onRefresh, readOnlyMode = false }) => 
                                     <div className="w-8 h-8 bg-white rounded-full"></div>
                                 </div>
                             </div>
-                            <h3 className="mt-6 text-slate-800 font-bold text-xl">Opening Editor</h3>
+                            <h3 className="mt-6 text-slate-800 font-bold text-xl">Opening Document</h3>
                             <p className="mt-2 text-slate-500 text-sm max-w-xs text-center">
-                                Preparing your workspace in ONLYOFFICE Document Server...
+                                Loading via {engine === 'microsoft' ? 'Microsoft Office' : 'Google Docs'} viewer...
                             </p>
                         </div>
                     )}
-                    <div id="onlyoffice-container" className="w-full h-full"></div>
+
+                    {error && (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-50 z-10">
+                            <AlertTriangle className="w-16 h-16 text-amber-500 mb-4" />
+                            <h3 className="text-slate-800 font-bold text-xl">{error}</h3>
+                            <p className="mt-2 text-slate-500 text-sm max-w-md text-center">
+                                Try switching to {engine === 'microsoft' ? 'Google' : 'Microsoft'} viewer, or download the file to view it locally.
+                            </p>
+                            <div className="flex gap-3 mt-6">
+                                <button
+                                    onClick={() => setEngine(engine === 'microsoft' ? 'google' : 'microsoft')}
+                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-500 transition-all"
+                                >
+                                    <RefreshCw className="w-4 h-4 inline mr-2" />
+                                    Switch Engine
+                                </button>
+                                <button
+                                    onClick={handleDownloadForEdit}
+                                    className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-500 transition-all"
+                                >
+                                    <Download className="w-4 h-4 inline mr-2" />
+                                    Download File
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {fileUrl && !error && (
+                        <iframe
+                            key={`${engine}-${fileUrl}`}
+                            src={isPdf ? fileUrl : viewerUrl}
+                            className="w-full h-full border-0"
+                            title="Document Viewer"
+                            onLoad={() => setLoading(false)}
+                            sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+                        />
+                    )}
+                </div>
+
+                {/* Footer */}
+                <div className="h-10 border-t border-slate-200 flex items-center justify-between px-6 bg-slate-50">
+                    <div className="flex items-center gap-4 text-[11px] text-slate-500 font-medium">
+                        <span className="flex items-center gap-1.5">
+                            <Shield className="w-3 h-3 text-emerald-500" /> Secure View
+                        </span>
+                        <span className="hidden md:inline">• {engine === 'microsoft' ? 'Microsoft' : 'Google'} Cloud Rendering</span>
+                        {!readOnlyMode && (
+                            <span className="text-amber-600 font-bold">• To edit: Download → Edit in Office → Re-upload</span>
+                        )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                        {fileUrl && (
+                            <button
+                                onClick={() => window.open(isPdf ? fileUrl : viewerUrl, '_blank')}
+                                className="flex items-center gap-1 px-2 py-1 text-[10px] font-bold text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-all"
+                            >
+                                <ExternalLink className="w-3 h-3" /> Open in New Tab
+                            </button>
+                        )}
+                    </div>
                 </div>
             </div>
         </div>
