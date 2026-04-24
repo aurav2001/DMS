@@ -22,7 +22,7 @@ const OnlyOfficeEditor = ({ doc, onClose, onRefresh, readOnlyMode = false }) => 
     const { user } = useAuth();
 
     const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    const DS_URL = import.meta.env.VITE_ONLYOFFICE_URL || (isLocal ? 'http://localhost:8080' : 'https://0e5fbecf25a960.lhr.life');
+    const DS_URL = import.meta.env.VITE_ONLYOFFICE_URL || 'http://localhost:8080';
 
     // Workspace state
     const [workspaceDir, setWorkspaceDir] = useState(null);
