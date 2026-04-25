@@ -8,6 +8,6 @@
   ],
   "scripts": {
     "install-all": "npm install && cd client && npm install && cd ../server && npm install",
-    "build": "cd client && npm install --include=dev && npm run build"
+    "build": "npm run build --prefix client"
   }
 }

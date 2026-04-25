@@ -1,1 +1,16 @@
-{"projectId":"prj_DPALUoRqUQCM4RVM8sW8YAXKqVQm","orgId":"team_ywUOQj7QnjBn2Goqm8gbFA2Y","projectName":"dms-frontend"}
+{
+  "projectId": "prj_DPALUoRqUQCM4RVM8sW8YAXKqVQm",
+  "orgId": "team_ywUOQj7QnjBn2Goqm8gbFA2Y",
+  "projectName": "dms-frontend",
+  "settings": {
+    "createdAt": 1776065298318,
+    "framework": "vite",
+    "devCommand": null,
+    "installCommand": null,
+    "buildCommand": null,
+    "outputDirectory": null,
+    "rootDirectory": null,
+    "directoryListing": false,
+    "nodeVersion": "24.x"
+  }
+}
