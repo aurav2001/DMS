@@ -1,6 +1,8 @@
 const express = require('express');
-const ONLYOFFICE_URL = process.env.ONLYOFFICE_URL || 'https://documentserver.onlyoffice.com';
+const jwt = require('jsonwebtoken');
 const router = express.Router();
+const ONLYOFFICE_URL = process.env.ONLYOFFICE_URL || 'https://f53f9984.docs.onlyoffice.com';
+const ONLYOFFICE_JWT_SECRET = process.env.ONLYOFFICE_JWT_SECRET;
 const Document = require('../models/Document');
 const { downloadFromSFTP, uploadToSFTP } = require('../utils/sftp');
 const axios = require('axios');
@@ -97,12 +99,26 @@ router.post('/callback/:docId', async (req, res) => {
             const response = await axios.get(url, { responseType: 'arraybuffer' });
             const fileBuffer = Buffer.from(response.data);
 
+            const mongoose = require('mongoose');
+            const isValidUser = req.body.users && req.body.users[0] && mongoose.Types.ObjectId.isValid(req.body.users[0]);
+
+            // VERSIONING: Archive current state before updating
+            const currentVersion = {
+                versionNumber: doc.versions.length + 1,
+                fileUrl: doc.fileUrl,
+                storagePath: doc.storagePath,
+                fileData: doc.fileData,
+                updatedBy: isValidUser ? req.body.users[0] : doc.uploadedBy,
+                updatedAt: Date.now()
+            };
+            doc.versions.push(currentVersion);
+
             if (doc.storageType === 'mongodb') {
                 doc.fileData = fileBuffer;
                 doc.fileSize = fileBuffer.length;
                 doc.updatedAt = Date.now();
                 await doc.save();
-                console.log(`[OnlyOffice] Successfully saved ${doc.title} to MongoDB`);
+                console.log(`[OnlyOffice] Successfully saved ${doc.title} to MongoDB (Version ${doc.versions.length})`);
             } else if (doc.storageType === 'sftp') {
                 await uploadToSFTP(fileBuffer, doc.storagePath);
                 doc.fileSize = fileBuffer.length;
@@ -118,6 +134,44 @@ router.post('/callback/:docId', async (req, res) => {
     } catch (err) {
         console.error('[OnlyOffice Callback Error]', err);
         res.json({ error: 1 });
+    }
+});
+
+/**
+ * @route   POST api/onlyoffice/config
+ * @desc    Generate JWT token for ONLYOFFICE config
+ * @access  Public
+ */
+router.post('/config', async (req, res) => {
+    try {
+        const config = req.body;
+        
+        if (!ONLYOFFICE_JWT_SECRET) {
+            console.warn('[OnlyOffice] No JWT Secret configured in environment variables!');
+            return res.status(500).json({ error: 'Server configuration error: Missing JWT Secret' });
+        }
+
+        console.log(`[OnlyOffice] Signing config for document: ${config.document?.title}`);
+
+        // Generate token for the config object
+        const token = jwt.sign(config, ONLYOFFICE_JWT_SECRET, { algorithm: 'HS256', expiresIn: '1h' });
+        
+        console.log('[OnlyOffice] Config signed successfully (Direct Sign)');
+
+        res.json({
+            ...config,
+            token: token,
+            editorConfig: {
+                ...config.editorConfig,
+                token: token
+            }
+        });
+    } catch (err) {
+        console.error('[OnlyOffice Config Error Details]:', err);
+        res.status(500).json({ 
+            error: 'Error generating ONLYOFFICE config',
+            details: err.message
+        });
     }
 });
 

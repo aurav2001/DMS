@@ -12,6 +12,9 @@ const UploadModal = ({ onClose, onSuccess, folderId }) => {
     const [title, setTitle] = useState('');
     const [isNewFolder, setIsNewFolder] = useState(false);
     const [newFolderName, setNewFolderName] = useState('');
+    const [department, setDepartment] = useState('General');
+
+    const departments = ['IT', 'HR', 'Sales', 'Marketing', 'Finance', 'Operations', 'General'];
 
     const onDrop = useCallback(acceptedFiles => {
         setFile(acceptedFiles[0]);
@@ -51,6 +54,7 @@ const UploadModal = ({ onClose, onSuccess, folderId }) => {
             const formData = new FormData();
             formData.append('file', file);
             formData.append('title', title);
+            formData.append('department', department);
             if (targetFolderId && targetFolderId !== 'root') {
                 formData.append('folderId', targetFolderId);
             }
@@ -124,6 +128,19 @@ const UploadModal = ({ onClose, onSuccess, folderId }) => {
                                     onChange={(e) => setTitle(e.target.value)}
                                     placeholder="Enter document title"
                                 />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-400 mb-2">Department</label>
+                                <select 
+                                    className="w-full px-4 py-3 rounded-xl border dark:border-slate-800 dark:bg-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none"
+                                    value={department}
+                                    onChange={(e) => setDepartment(e.target.value)}
+                                >
+                                    {departments.map(dept => (
+                                        <option key={dept} value={dept}>{dept}</option>
+                                    ))}
+                                </select>
                             </div>
 
                             {/* Create New Folder Toggle */}

@@ -12,8 +12,8 @@ const OfficeViewer = ({ doc, onClose }) => {
   const viewerUrl = engine === 'microsoft' ? microsoftUrl : googleUrl;
 
   return (
-    <div className="fixed inset-0 z-[200] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-slate-900 w-full h-full max-w-6xl rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200">
+    <div className="fixed inset-0 z-[200] bg-slate-900/60 flex items-center justify-center">
+      <div className="bg-white dark:bg-slate-900 w-full h-full shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200">
         
         {/* Header */}
         <div className="h-16 border-b dark:border-slate-800 flex items-center justify-between px-4 md:px-6 bg-slate-50 dark:bg-slate-900/50">

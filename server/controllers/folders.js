@@ -1,6 +1,7 @@
 const Folder = require('../models/Folder');
 const Document = require('../models/Document');
 const User = require('../models/User');
+const sendEmail = require('../utils/email');
 
 // Create a new folder
 exports.createFolder = async (req, res) => {
@@ -148,6 +149,27 @@ exports.shareFolder = async (req, res) => {
         }
 
         await folder.save();
+
+        // Send Email Notification
+        await sendEmail({
+            email: userToShare.email,
+            subject: `DocVault - A folder has been shared with you`,
+            html: `
+                <div style="font-family: sans-serif; padding: 20px; color: #333; max-width: 600px; margin: auto; border: 1px solid #eee; border-radius: 10px;">
+                    <h2 style="color: #6366f1; border-bottom: 2px solid #6366f1; padding-bottom: 10px;">Folder Shared</h2>
+                    <p>Hello <b>${userToShare.name}</b>,</p>
+                    <p><b>${req.user.name}</b> has shared a folder with you: <b style="color: #6366f1;">${folder.name}</b>.</p>
+                    <p>Access Level: <span style="background: #eef2ff; color: #6366f1; padding: 2px 8px; rounded: 4px; font-weight: bold;">${access.toUpperCase()}</span></p>
+                    <p>You can view this folder and its contents in your "Shared with Me" tab under the dashboard.</p>
+                    <div style="text-align: center; margin: 30px 0;">
+                        <a href="${process.env.VITE_APP_URL || '#'}/dashboard" style="display: inline-block; padding: 12px 25px; background: #6366f1; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">View Folder</a>
+                    </div>
+                    <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
+                    <p style="font-size: 12px; color: #94a3b8; text-align: center;">This is an automated message from DocVault.<br/>Please do not reply to this email.</p>
+                </div>
+            `
+        });
+
         res.json({ message: `Folder shared with ${email} as ${access}`, folder });
     } catch (err) {
         res.status(500).json({ message: 'Error sharing folder', error: err.message });

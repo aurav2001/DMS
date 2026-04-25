@@ -51,7 +51,7 @@ if (!process.env.MONGO_URI) {
     console.error('CRITICAL: MONGO_URI is not defined in environment variables');
 }
 
-mongoose.connect(process.env.MONGO_URI)
+mongoose.connect(process.env.MONGO_URI?.trim())
     .then(async () => {
         console.log('MongoDB Connected Successfully');
         
@@ -88,6 +88,8 @@ const io = initSocket(server);
 
 // Attach io to app to use it in controllers if needed
 app.set('io', io);
+
+
 
 // Global Error Handler for Debugging
 app.use((err, req, res, next) => {

@@ -30,12 +30,15 @@ const DocumentGrid = ({
     }
 
     return (
-        <div className="space-y-8 pb-20">
+        <div className="space-y-12 pb-20">
             {/* Folders Section */}
             {folders.length > 0 && (
                 <div>
-                    <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 px-2">Folders</h2>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    <div className="flex items-center gap-3 mb-6 px-2">
+                        <h2 className="text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">Folders</h2>
+                        <div className="flex-1 h-px bg-slate-100 dark:bg-slate-800" />
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
                         {folders.map(folder => (
                             <FolderCard 
                                 key={folder._id}
@@ -52,8 +55,11 @@ const DocumentGrid = ({
             {/* Documents Section */}
             {documents.length > 0 && (
                 <div>
-                    <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 px-2">Documents</h2>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    <div className="flex items-center gap-3 mb-6 px-2">
+                        <h2 className="text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">Documents</h2>
+                        <div className="flex-1 h-px bg-slate-100 dark:bg-slate-800" />
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
                         {documents.map(doc => (
                             <SmartDocCard 
                                 key={doc._id} 

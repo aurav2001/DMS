@@ -18,11 +18,13 @@ const OnlyOfficeEditor = ({ doc, onClose, onRefresh, readOnlyMode = false }) => 
     const [loading, setLoading] = useState(true);
     const [engine, setEngine] = useState('onlyoffice'); // Default to ONLYOFFICE
     const [fileUrl, setFileUrl] = useState(null);
+    const [editorConfig, setEditorConfig] = useState(null);
     const [error, setError] = useState(null);
     const { user } = useAuth();
 
     const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    const DS_URL = import.meta.env.VITE_ONLYOFFICE_URL || 'http://localhost:8080';
+    const DS_URL = import.meta.env.VITE_ONLYOFFICE_URL || 'https://f53f9984.docs.onlyoffice.com/';
+    console.log('ONLYOFFICE: Initializing with DS_URL:', DS_URL);
 
     // Workspace state
     const [workspaceDir, setWorkspaceDir] = useState(null);
@@ -31,46 +33,6 @@ const OnlyOfficeEditor = ({ doc, onClose, onRefresh, readOnlyMode = false }) => 
     const [uploading, setUploading] = useState(false);
     const [uploadSuccess, setUploadSuccess] = useState(false);
     const fsSupported = isFileSystemAccessSupported();
-
-    // Load saved workspace on mount
-    useEffect(() => {
-        if (fsSupported) {
-            getWorkspaceDirectory().then(handle => {
-                if (handle) {
-                    setWorkspaceDir(handle);
-                    setWorkspaceName(handle.name);
-                }
-            });
-        }
-    }, [fsSupported]);
-
-    // Get file URL for viewing
-    useEffect(() => {
-        const getFileUrl = async () => {
-            try {
-                setLoading(true);
-                setError(null);
-
-                if (doc.fileUrl && doc.fileUrl.startsWith('http')) {
-                    setFileUrl(doc.fileUrl);
-                    setLoading(false);
-                    return;
-                }
-
-                // Backend URL for downloading the file (must be accessible by ONLYOFFICE DS)
-                const backendUrl = SOCKET_URL;
-                const publicUrl = `${backendUrl}/api/onlyoffice/download/${doc._id}`;
-                setFileUrl(publicUrl);
-                setLoading(false);
-            } catch (err) {
-                console.error('Failed to get file URL:', err);
-                setError('Could not prepare file for viewing');
-                setLoading(false);
-            }
-        };
-
-        getFileUrl();
-    }, [doc]);
 
     const ext = doc.fileName?.split('.').pop().toLowerCase() || '';
     const isOfficeFile = ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'odt', 'ods', 'odp'].includes(ext);
@@ -84,6 +46,78 @@ const OnlyOfficeEditor = ({ doc, onClose, onRefresh, readOnlyMode = false }) => 
         return 'word';
     };
 
+    // Load saved workspace on mount
+    useEffect(() => {
+        if (fsSupported) {
+            getWorkspaceDirectory().then(handle => {
+                if (handle) {
+                    setWorkspaceDir(handle);
+                    setWorkspaceName(handle.name);
+                }
+            });
+        }
+    }, [fsSupported]);
+
+    // Get file URL and signed config
+    useEffect(() => {
+        const prepareEditor = async () => {
+            try {
+                setLoading(true);
+                setError(null);
+
+                let currentFileUrl = doc.fileUrl;
+                if (!currentFileUrl || !currentFileUrl.startsWith('http')) {
+                    currentFileUrl = `${SOCKET_URL}/api/onlyoffice/download/${doc._id}`;
+                }
+                setFileUrl(currentFileUrl);
+
+                // Prepare base config for signing
+                const baseConfig = {
+                    document: {
+                        fileType: ext,
+                        key: `${doc._id}-${new Date(doc.updatedAt).getTime()}`,
+                        title: doc.fileName || doc.title,
+                        url: currentFileUrl,
+                        permissions: {
+                            edit: !readOnlyMode,
+                            download: true,
+                            fillForms: true,
+                            review: true,
+                            comment: true
+                        }
+                    },
+                    documentType: getDocumentType(ext),
+                    editorConfig: {
+                        callbackUrl: `${SOCKET_URL}/api/onlyoffice/callback/${doc._id}`,
+                        user: {
+                            id: user?.id || "guest",
+                            name: user?.name || "Guest User"
+                        },
+                        customization: {
+                            forcesave: true,
+                            compactToolbar: false,
+                            autosave: true
+                        }
+                    }
+                };
+
+                // Fetch signed config from backend
+                const response = await axios.post(`${SOCKET_URL}/api/onlyoffice/config`, baseConfig);
+                console.log('ONLYOFFICE: Received signed config with token:', response.data.token ? 'YES' : 'NO');
+                setEditorConfig(response.data);
+                setLoading(false);
+            } catch (err) {
+                console.error('Failed to prepare editor:', err);
+                setError('Could not prepare ONLYOFFICE Document Server. Check configuration.');
+                setLoading(false);
+            }
+        };
+
+        if (doc) {
+            prepareEditor();
+        }
+    }, [doc, SOCKET_URL, user, readOnlyMode, ext]);
+
     const onDocumentReady = () => {
         console.log("ONLYOFFICE: Document is ready");
         setLoading(false);
@@ -93,9 +127,12 @@ const OnlyOfficeEditor = ({ doc, onClose, onRefresh, readOnlyMode = false }) => 
         console.log("ONLYOFFICE: App is ready");
     };
 
-    const onError = (event) => {
-        console.error("ONLYOFFICE Error:", event);
-        setError("ONLYOFFICE Document Server error. Check if it is running.");
+    const onError = (e) => {
+        console.error("ONLYOFFICE Error Event:", e);
+        if (e && e.data) {
+            console.error("ONLYOFFICE Error Data:", JSON.stringify(e.data));
+        }
+        setError("ONLYOFFICE Error: " + (e?.data?.error || "Unknown error"));
         setLoading(false);
     };
 
@@ -227,8 +264,8 @@ const OnlyOfficeEditor = ({ doc, onClose, onRefresh, readOnlyMode = false }) => 
     };
 
     return (
-        <div className="fixed inset-0 z-[1000] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-2 sm:p-4">
-            <div className="bg-white w-full h-full rounded-2xl overflow-hidden flex flex-col shadow-2xl border border-white/10">
+        <div className="fixed inset-0 z-[1000] bg-slate-950 flex items-center justify-center">
+            <div className="bg-white w-full h-full overflow-hidden flex flex-col shadow-2xl">
                 {/* Header */}
                 <div className="bg-slate-900 text-white px-4 sm:px-6 py-3 flex items-center justify-between border-b border-slate-800">
                     <div className="flex items-center gap-3">
@@ -359,39 +396,12 @@ const OnlyOfficeEditor = ({ doc, onClose, onRefresh, readOnlyMode = false }) => 
                         </div>
                     )}
 
-                    {fileUrl && !error && (
+                    {editorConfig && !error && (
                         engine === 'onlyoffice' && !isPdf ? (
                             <DocumentEditor
                                 id="docxEditor"
                                 documentServerUrl={DS_URL}
-                                config={{
-                                    document: {
-                                        fileType: ext,
-                                        key: `${doc._id}-${new Date(doc.updatedAt).getTime()}`,
-                                        title: doc.fileName || doc.title,
-                                        url: fileUrl,
-                                        permissions: {
-                                            edit: !readOnlyMode,
-                                            download: true,
-                                            fillForms: true,
-                                            review: true,
-                                            comment: true
-                                        }
-                                    },
-                                    documentType: getDocumentType(ext),
-                                    editorConfig: {
-                                        callbackUrl: `${SOCKET_URL}/api/onlyoffice/callback/${doc._id}`,
-                                        user: {
-                                            id: user?.id || "guest",
-                                            name: user?.name || "Guest User"
-                                        },
-                                        customization: {
-                                            forcesave: true,
-                                            compactToolbar: false,
-                                            autosave: true
-                                        }
-                                    }
-                                }}
+                                config={editorConfig}
                                 events_onDocumentReady={onDocumentReady}
                                 events_onAppReady={onAppReady}
                                 events_onError={onError}
@@ -403,7 +413,7 @@ const OnlyOfficeEditor = ({ doc, onClose, onRefresh, readOnlyMode = false }) => 
                                 className="w-full h-full border-0"
                                 title="Document Viewer"
                                 onLoad={() => setLoading(false)}
-                                sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+                                sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-downloads allow-modals"
                             />
                         )
                     )}
