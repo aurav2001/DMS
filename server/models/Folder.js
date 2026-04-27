@@ -6,7 +6,7 @@ const folderSchema = new mongoose.Schema({
     parentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Folder', default: null },
     sharedWith: [{
         user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-        access: { type: String, enum: ['view', 'edit'], default: 'view' }
+        access: { type: String, enum: ['view', 'edit', 'none'], default: 'view' }
     }],
     isDeleted: { type: Boolean, default: false },
     createdAt: { type: Date, default: Date.now },

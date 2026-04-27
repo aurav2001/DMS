@@ -3,6 +3,26 @@ const Document = require('../models/Document');
 const User = require('../models/User');
 const sendEmail = require('../utils/email');
 
+// Helper to determine effective access level for a folder
+const getFolderAccess = async (folderId, userId, userRole) => {
+    if (userRole === 'Admin') return 'edit';
+    const uid = userId.toString();
+    
+    let currentId = folderId;
+    while (currentId) {
+        const folder = await Folder.findById(currentId);
+        if (!folder) break;
+        
+        if (folder.owner.toString() === uid) return 'edit';
+        
+        const share = folder.sharedWith.find(s => s.user.toString() === uid);
+        if (share) return share.access; // 'view', 'edit', or 'none'
+        
+        currentId = folder.parentId;
+    }
+    return 'none';
+};
+
 // Create a new folder
 exports.createFolder = async (req, res) => {
     try {
@@ -24,117 +44,124 @@ exports.getFolderContents = async (req, res) => {
     try {
         const parentId = req.params.folderId === 'root' ? null : req.params.folderId;
         const userId = req.user.id;
+        const userRole = req.user.role;
 
-        let hasAccessToParent = false;
+        // 1. Check access to the requested folder
+        let parentAccess = 'none';
         if (!parentId) {
-            hasAccessToParent = true; // Root is always accessible (filtered below)
+            parentAccess = 'edit'; // Root is accessible, but we filter children
         } else {
-            // Check if user is owner or shared on this specific folder or ANY parent folder
-            let currentId = parentId;
-            while (currentId) {
-                const folder = await Folder.findById(currentId);
-                if (!folder) break;
-                if (folder.owner.toString() === userId.toString() || 
-                    folder.sharedWith.some(s => s.user.toString() === userId.toString())) {
-                    hasAccessToParent = true;
-                    break;
-                }
-                currentId = folder.parentId;
-            }
+            parentAccess = await getFolderAccess(parentId, userId, userRole);
         }
 
-        let folderQuery = { parentId, isDeleted: false };
-        let docQuery = { folderId: parentId, isDeleted: false };
-
-        if (!hasAccessToParent) {
+        if (parentAccess === 'none') {
             return res.status(403).json({ message: 'Access denied to this folder' });
         }
 
-        // If at root, we must filter items that are specifically owned/shared
-        if (!parentId) {
-            folderQuery.$or = [
-                { owner: userId },
-                { 'sharedWith.user': userId }
-            ];
-            docQuery.$or = [
-                { uploadedBy: userId },
-                { sharedWith: userId }
-            ];
-        } 
-        // If inside an accessible folder, we show everything (cascading)
-        // Note: For root view, the logic above ensures only top-level shared items appear.
+        // 2. Fetch all immediate children
+        const allFolders = await Folder.find({ parentId, isDeleted: false });
+        const allDocuments = await Document.find({ folderId: parentId, isDeleted: false }).populate('uploadedBy', 'name email avatar');
 
-        const folders = await Folder.find(folderQuery);
-        const documents = await Document.find(docQuery).populate('uploadedBy', 'name email avatar');
+        // 3. Filter and annotate folders
+        const accessibleFolders = [];
+        for (const f of allFolders) {
+            let access = 'none';
+            if (!parentId) {
+                // If at root, only show owned or explicitly shared
+                if (f.owner.toString() === userId.toString()) access = 'edit';
+                else {
+                    const share = f.sharedWith.find(s => s.user.toString() === userId.toString());
+                    if (share) access = share.access;
+                }
+            } else {
+                // If inside a folder, check explicit share or inherit from parentAccess
+                const share = f.sharedWith.find(s => s.user.toString() === userId.toString());
+                access = share ? share.access : parentAccess;
+            }
 
-        // Helper to calculate effective permissions for a document
-        const getDocPermissions = async (doc, user) => {
+            if (access !== 'none') {
+                accessibleFolders.push({ ...f.toObject(), userAccess: access });
+            }
+        }
+
+        // 4. Helper to calculate effective permissions for a document
+        const getDocPermissions = async (doc, user, pAccess) => {
             const userId = user.id.toString();
             const isAdmin = user.role === 'Admin';
             const isViewer = user.role === 'Viewer';
             const uploaderId = doc.uploadedBy?._id?.toString() || doc.uploadedBy?.toString();
             const isOwner = uploaderId === userId;
 
-            let canView = isOwner || isAdmin;
-            let canDownload = isOwner || isAdmin;
+            // Direct share on document
+            const directShare = doc.sharedWith?.some(id => id.toString() === userId);
+
+            // Initial permissions based on ownership/role
+            let canView = isOwner || isAdmin || directShare;
+            let canDownload = isOwner || isAdmin || directShare;
             let canEdit = isOwner || isAdmin;
             let canShare = isOwner || isAdmin;
 
-            // Inherit from parent folders
-            if (doc.folderId) {
-                let currentId = doc.folderId;
-                while (currentId) {
-                    const f = await Folder.findById(currentId);
-                    if (!f) break;
-                    const share = f.sharedWith?.find(s => s.user.toString() === userId);
-                    if (f.owner.toString() === userId || share) {
-                        canView = true;
-                        canDownload = true;
-                        if (!isViewer && (f.owner.toString() === userId || share.access === 'edit')) canEdit = true;
-                        break;
-                    }
-                    currentId = f.parentId;
+            // Folder Inheritance (Crucial for bulk permissions)
+            if (pAccess === 'edit') {
+                canView = true;
+                canDownload = true;
+                canEdit = true; // If folder is editable, all files inside are editable
+            } else if (pAccess === 'view') {
+                canView = true;
+                canDownload = true;
+                // canEdit remains based on owner/admin or directShare check below
+            } else if (pAccess === 'none') {
+                // If folder is hidden and user is NOT owner/admin/directShare, they lose access
+                if (!isOwner && !isAdmin && !directShare) {
+                    return { canView: false, canDownload: false, canEdit: false, canShare: false };
                 }
             }
 
-            // Direct share
-            if (doc.sharedWith?.some(id => id.toString() === userId)) {
-                canView = true;
-                canDownload = true;
-                if (!isViewer && doc.permissions?.canEdit) canEdit = true;
+            // Direct document-level share override
+            if (directShare && doc.permissions?.canEdit) {
+                canEdit = true;
             }
 
+            // Final safety overrides (Role and Status)
             if (isViewer) {
-                canEdit = false;
+                canEdit = false; // Viewers can NEVER edit
                 canShare = false;
             }
 
-            if (doc.status === 'Approved') canEdit = false;
+            if (doc.status === 'Approved') {
+                canEdit = false; // Approved documents cannot be edited
+            }
 
             return { canView, canDownload, canEdit, canShare };
         };
 
-        const docsWithPerms = await Promise.all(documents.map(async (doc) => {
-            const perms = await getDocPermissions(doc, req.user);
-            return { ...doc.toObject(), userPermissions: perms };
-        }));
+        const docsWithPerms = [];
+        for (const doc of allDocuments) {
+            const perms = await getDocPermissions(doc, req.user, parentAccess);
+            if (perms.canView) {
+                docsWithPerms.push({ ...doc.toObject(), userPermissions: perms });
+            }
+        }
 
-        res.json({ folders, documents: docsWithPerms });
+        res.json({ folders: accessibleFolders, documents: docsWithPerms });
     } catch (err) {
         console.error('[GetFolderContents Error]', err);
         res.status(500).json({ message: 'Error fetching contents', error: err.message });
     }
-
 };
 
 // Share a folder
 exports.shareFolder = async (req, res) => {
     try {
-        const { email, access } = req.body; // access: 'view' or 'edit'
+        const { email, access } = req.body; // access: 'view', 'edit', or 'none'
         const userToShare = await User.findOne({ email });
 
         if (!userToShare) {
             return res.status(404).json({ message: 'User not found' });
+        }
+
+        if (userToShare._id.toString() === req.user.id.toString()) {
+            return res.status(400).json({ message: 'You cannot share a folder with yourself' });
         }
 
         const folder = await Folder.findById(req.params.id);
@@ -176,19 +203,88 @@ exports.shareFolder = async (req, res) => {
     }
 };
 
-// Delete a folder (Soft delete)
+// Share folder and subfolders in bulk
+exports.shareFolderBulk = async (req, res) => {
+    try {
+        const { email, parentAccess, subfolderOverrides } = req.body;
+        const userToShare = await User.findOne({ email });
+
+        if (!userToShare) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        if (userToShare._id.toString() === req.user.id.toString()) {
+            return res.status(400).json({ message: 'You cannot share a folder with yourself' });
+        }
+
+        const parentFolder = await Folder.findById(req.params.id);
+        if (!parentFolder) return res.status(404).json({ message: 'Parent folder not found' });
+
+        // 1. Update Parent
+        const existingShare = parentFolder.sharedWith.find(s => s.user.toString() === userToShare._id.toString());
+        if (existingShare) existingShare.access = parentAccess;
+        else parentFolder.sharedWith.push({ user: userToShare._id, access: parentAccess });
+        await parentFolder.save();
+
+        // 2. Update Subfolders
+        if (subfolderOverrides && subfolderOverrides.length > 0) {
+            for (const override of subfolderOverrides) {
+                const subFolder = await Folder.findById(override.folderId);
+                if (subFolder) {
+                    const existingSubShare = subFolder.sharedWith.find(s => s.user.toString() === userToShare._id.toString());
+                    if (existingSubShare) existingSubShare.access = override.access;
+                    else subFolder.sharedWith.push({ user: userToShare._id, access: override.access });
+                    await subFolder.save();
+                }
+            }
+        }
+
+        res.json({ message: `Bulk sharing completed for ${email}`, folder: parentFolder });
+    } catch (err) {
+        res.status(500).json({ message: 'Error in bulk sharing', error: err.message });
+    }
+};
+
+// Get immediate subfolders for permission management
+exports.getSubfolders = async (req, res) => {
+    try {
+        const folders = await Folder.find({ 
+            parentId: req.params.id, 
+            isDeleted: false 
+        }).select('name _id sharedWith');
+        res.json(folders);
+    } catch (err) {
+        res.status(500).json({ message: 'Error fetching subfolders' });
+    }
+};
+
+// Delete a folder (Soft delete for owner, remove share for others)
 exports.deleteFolder = async (req, res) => {
     try {
         const folder = await Folder.findById(req.params.id);
         if (!folder) return res.status(404).json({ message: 'Folder not found' });
 
-        folder.isDeleted = true;
-        await folder.save();
+        const userId = req.user.id.toString();
+        const isOwner = folder.owner.toString() === userId;
+        const isAdmin = req.user.role === 'Admin';
 
-        // Also soft-delete all documents inside (basic implementation, not recursive for nested folders yet)
-        await Document.updateMany({ folderId: folder._id }, { isDeleted: true });
-
-        res.json({ message: 'Folder and its immediate contents moved to trash' });
+        if (isOwner || isAdmin) {
+            // Owner deletes for everyone
+            folder.isDeleted = true;
+            await folder.save();
+            await Document.updateMany({ folderId: folder._id }, { isDeleted: true });
+            res.json({ message: 'Folder and its immediate contents moved to trash' });
+        } else {
+            // Shared user just removes their own access
+            const shareIndex = folder.sharedWith.findIndex(s => s.user.toString() === userId);
+            if (shareIndex > -1) {
+                folder.sharedWith.splice(shareIndex, 1);
+                await folder.save();
+                res.json({ message: 'Folder removed from your view' });
+            } else {
+                res.status(403).json({ message: 'Not authorized to delete this folder' });
+            }
+        }
     } catch (err) {
         res.status(500).json({ message: 'Error deleting folder', error: err.message });
     }

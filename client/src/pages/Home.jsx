@@ -7,10 +7,12 @@ import HowItWorks from '../components/Landing/HowItWorks';
 import Testimonials from '../components/Landing/Testimonials';
 import Contact from '../components/Landing/Contact';
 import Footer from '../components/Landing/Footer';
+import CursorFollower from '../components/Landing/CursorFollower';
 
 const Home = () => {
   return (
     <div className="min-h-screen">
+      <CursorFollower />
       <Navbar />
       <Hero />
       <PublicDocuments />

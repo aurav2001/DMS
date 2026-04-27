@@ -21,62 +21,88 @@ const LinkedinIcon = ({ className }) => (
 
 const Footer = () => {
   return (
-    <footer className="bg-slate-900 text-slate-400 py-16">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid md:grid-cols-4 gap-12 mb-12">
-          {/* Brand */}
-          <div className="col-span-1">
-            <div className="flex items-center gap-2 mb-6">
-              <div className="bg-primary-600 p-2 rounded-lg">
-                <Shield className="text-white w-6 h-6" />
+    <footer className="bg-slate-950 text-slate-400 pt-32 pb-16 relative overflow-hidden">
+      {/* Decorative gradient orb */}
+      <div className="absolute bottom-0 right-0 w-[600px] h-[600px] bg-primary-900/10 rounded-full blur-[120px] -z-0 translate-x-1/3 translate-y-1/3"></div>
+
+      <div className="max-w-7xl mx-auto px-6 lg:px-8 relative z-10">
+        <div className="grid lg:grid-cols-12 gap-16 mb-20">
+          {/* Brand Column */}
+          <div className="lg:col-span-4">
+            <div className="flex items-center gap-3 mb-8">
+              <div className="bg-primary-600 p-2.5 rounded-2xl shadow-xl shadow-primary-900/20">
+                <Shield className="text-white w-7 h-7" />
               </div>
-              <span className="text-2xl font-bold text-white tracking-tight">DocVault</span>
+              <span className="text-3xl font-black text-white tracking-tight">DocVault</span>
             </div>
-            <p className="text-sm leading-relaxed mb-6">
-              The world's most advanced and secure document management system for modern teams.
+            <p className="text-base leading-relaxed mb-10 max-w-sm font-medium">
+              The world's most advanced and secure document management system for modern teams. Built with precision and care.
             </p>
-            <div className="flex gap-4">
-              <a href="#" className="hover:text-primary-400 transition-colors"><TwitterIcon className="w-5 h-5" /></a>
-              <a href="#" className="hover:text-primary-400 transition-colors"><GithubIcon className="w-5 h-5" /></a>
-              <a href="#" className="hover:text-primary-400 transition-colors"><LinkedinIcon className="w-5 h-5" /></a>
+            <div className="flex gap-5">
+              {[TwitterIcon, GithubIcon, LinkedinIcon].map((Icon, i) => (
+                <a key={i} href="#" className="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center hover:bg-primary-600 hover:text-white transition-all duration-500 hover:-translate-y-1 border border-slate-800">
+                  <Icon className="w-5 h-5" />
+                </a>
+              ))}
             </div>
           </div>
 
-          {/* Links */}
-          <div>
-            <h4 className="text-white font-bold mb-6 uppercase text-sm tracking-widest">Quick Links</h4>
-            <ul className="space-y-4">
-              {['Home', 'About', 'Features', 'Contact'].map(link => (
-                <li key={link}><a href="#" className="hover:text-white transition-colors">{link}</a></li>
+          {/* Links Columns */}
+          <div className="lg:col-span-2">
+            <h4 className="text-white font-black mb-8 uppercase text-xs tracking-[0.2em]">Platform</h4>
+            <ul className="space-y-4 font-medium">
+              {['Home', 'About', 'Features', 'Contact', 'Pricing'].map(link => (
+                <li key={link}>
+                  <a href="#" className="hover:text-primary-400 transition-colors flex items-center gap-2 group">
+                    <span className="w-1.5 h-1.5 rounded-full bg-primary-600 opacity-0 group-hover:opacity-100 transition-opacity"></span>
+                    {link}
+                  </a>
+                </li>
               ))}
             </ul>
           </div>
 
-          {/* Resources */}
-          <div>
-            <h4 className="text-white font-bold mb-6 uppercase text-sm tracking-widest">Resources</h4>
-            <ul className="space-y-4">
-              {['Documentation', 'API Reference', 'Security', 'Privacy Policy', 'Terms of Service'].map(link => (
-                <li key={link}><a href="#" className="hover:text-white transition-colors">{link}</a></li>
+          <div className="lg:col-span-2">
+            <h4 className="text-white font-black mb-8 uppercase text-xs tracking-[0.2em]">Company</h4>
+            <ul className="space-y-4 font-medium">
+              {['Documentation', 'API Reference', 'Security', 'Privacy Policy', 'Terms'].map(link => (
+                <li key={link}>
+                  <a href="#" className="hover:text-primary-400 transition-colors flex items-center gap-2 group">
+                    <span className="w-1.5 h-1.5 rounded-full bg-primary-600 opacity-0 group-hover:opacity-100 transition-opacity"></span>
+                    {link}
+                  </a>
+                </li>
               ))}
             </ul>
           </div>
 
-          {/* Newsletter */}
-          <div>
-            <h4 className="text-white font-bold mb-6 uppercase text-sm tracking-widest">Stay Updated</h4>
-            <p className="text-sm mb-6">Get the latest updates and security news.</p>
-            <div className="flex gap-2">
-              <input type="email" placeholder="Email address" className="bg-slate-800 border-none rounded-lg px-4 py-2 text-sm focus:ring-1 focus:ring-primary-500 w-full" />
-              <button className="bg-primary-600 text-white p-2 rounded-lg hover:bg-primary-700 transition-colors">
-                <Mail className="w-5 h-5" />
-              </button>
+          {/* Newsletter Column */}
+          <div className="lg:col-span-4">
+            <div className="bg-slate-900/50 p-8 rounded-[2.5rem] border border-slate-800 backdrop-blur-xl">
+              <h4 className="text-white font-black mb-4 uppercase text-xs tracking-[0.2em]">Join our newsletter</h4>
+              <p className="text-sm mb-8 font-medium leading-relaxed">Experience the future of document storage. No spam, just pure updates.</p>
+              <div className="relative">
+                <input 
+                  type="email" 
+                  placeholder="name@company.com" 
+                  className="bg-slate-950 border border-slate-800 rounded-2xl px-6 py-4 text-sm focus:ring-2 focus:ring-primary-600 focus:border-transparent w-full transition-all outline-none text-white placeholder:text-slate-600" 
+                />
+                <button className="absolute right-2 top-2 bottom-2 bg-primary-600 text-white px-5 rounded-xl hover:bg-primary-700 transition-all shadow-lg shadow-primary-900/20 active:scale-95 flex items-center justify-center">
+                  <Mail className="w-5 h-5" />
+                </button>
+              </div>
+              <p className="text-[10px] text-slate-500 mt-4 text-center font-bold uppercase tracking-widest">Secured by AES-256</p>
             </div>
           </div>
         </div>
         
-        <div className="pt-12 border-t border-slate-800 text-center text-sm">
-          <p>© {new Date().getFullYear()} DocVault Inc. All rights reserved. Designed with ❤️ for professionals.</p>
+        <div className="pt-12 border-t border-slate-900 flex flex-col md:flex-row justify-between items-center gap-6 text-sm font-medium">
+          <p>© {new Date().getFullYear()} DocVault Inc. All rights reserved.</p>
+          <div className="flex gap-8">
+            <a href="#" className="hover:text-white transition-colors">Cookies</a>
+            <a href="#" className="hover:text-white transition-colors">Privacy</a>
+            <a href="#" className="hover:text-white transition-colors">Status</a>
+          </div>
         </div>
       </div>
     </footer>

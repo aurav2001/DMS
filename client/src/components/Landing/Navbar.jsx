@@ -8,12 +8,19 @@ const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [userDropdown, setUserDropdown] = useState(false);
+  const [scrollProgress, setScrollProgress] = useState(0);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 20);
+      
+      // Calculate scroll progress
+      const winScroll = document.body.scrollTop || document.documentElement.scrollTop;
+      const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+      const scrolled = (winScroll / height) * 100;
+      setScrollProgress(scrolled);
     };
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
@@ -39,12 +46,20 @@ const Navbar = () => {
   return (
     <nav className={`fixed w-full z-50 transition-all duration-500 ${
       scrolled 
-      ? 'top-4 px-4 sm:px-6 lg:px-8' 
-      : 'top-0 px-0 py-4'
+      ? 'top-0' 
+      : 'top-0 py-2'
     }`}>
-      <div className={`max-w-7xl mx-auto px-6 py-3 transition-all duration-500 ${
+      {/* Scroll Progress Bar */}
+      <div className="absolute top-0 left-0 w-full h-[3px] bg-slate-100 z-[60]">
+        <motion.div 
+          className="h-full bg-gradient-to-r from-primary-500 via-indigo-500 to-purple-500"
+          style={{ width: `${scrollProgress}%` }}
+        />
+      </div>
+
+      <div className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 transition-all duration-500 ${
         scrolled 
-        ? 'glass-effect rounded-3xl shadow-[0_8px_32px_rgba(0,0,0,0.08)] backdrop-blur-2xl' 
+        ? 'glass-effect mt-4 rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.1)] mx-4 sm:mx-6 lg:mx-auto border-white/50' 
         : 'bg-transparent'
       }`}>
         <div className="flex justify-between items-center">

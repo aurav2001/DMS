@@ -14,15 +14,34 @@ const ShareModal = ({ isOpen, onClose, itemName, itemType, itemId, onSuccess }) 
     const [access, setAccess] = useState('view');
     const [loading, setLoading] = useState(false);
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const [subfolders, setSubfolders] = useState([]);
+    const [overrides, setOverrides] = useState({}); // { folderId: access }
     const dropdownRef = useRef(null);
-    const { token } = useAuth();
+    const { token, user } = useAuth();
 
 
     useEffect(() => {
         if (isOpen && token) {
             fetchUsers();
+            if (itemType === 'folder') {
+                fetchSubfolders();
+            }
+        } else {
+            setSubfolders([]);
+            setOverrides({});
         }
-    }, [isOpen, token]);
+    }, [isOpen, token, itemType, itemId]);
+
+    const fetchSubfolders = async () => {
+        try {
+            const res = await axios.get(`${API_BASE}/folders/${itemId}/subfolders`, {
+                headers: { 'x-auth-token': token }
+            });
+            setSubfolders(res.data || []);
+        } catch (err) {
+            console.error('Failed to fetch subfolders', err);
+        }
+    };
 
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -51,8 +70,9 @@ const ShareModal = ({ isOpen, onClose, itemName, itemType, itemId, onSuccess }) 
         setSelectedEmail(val); // Allow manual typing
         if (val.trim()) {
             const filtered = allUsers.filter(u => 
-                u.email.toLowerCase().includes(val.toLowerCase()) || 
-                u.name.toLowerCase().includes(val.toLowerCase())
+                (u.email.toLowerCase().includes(val.toLowerCase()) || 
+                u.name.toLowerCase().includes(val.toLowerCase())) &&
+                u.email !== user?.email
             );
             setSuggestions(filtered);
             setIsDropdownOpen(filtered.length > 0);
@@ -73,11 +93,22 @@ const ShareModal = ({ isOpen, onClose, itemName, itemType, itemId, onSuccess }) 
         
         setLoading(true);
         try {
-            const endpoint = itemType === 'folder' 
-                ? `${API_BASE}/folders/${itemId}/share`
-                : `${API_BASE}/documents/${itemId}/share`;
+            const subfolderOverrides = Object.entries(overrides).map(([folderId, acc]) => ({
+                folderId, access: acc
+            }));
+
+            const isBulk = itemType === 'folder' && subfolderOverrides.length > 0;
+            const endpoint = isBulk 
+                ? `${API_BASE}/folders/${itemId}/share-bulk`
+                : itemType === 'folder' 
+                    ? `${API_BASE}/folders/${itemId}/share`
+                    : `${API_BASE}/documents/${itemId}/share`;
             
-            await axios.post(endpoint, { email: selectedEmail, access }, {
+            const payload = isBulk 
+                ? { email: selectedEmail, parentAccess: access, subfolderOverrides }
+                : { email: selectedEmail, access };
+
+            await axios.post(endpoint, payload, {
                 headers: { 'x-auth-token': token }
             });
             
@@ -182,39 +213,93 @@ const ShareModal = ({ isOpen, onClose, itemName, itemType, itemId, onSuccess }) 
                             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">
                                 Permission Level
                             </label>
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-3 gap-2">
                                 <button 
                                     onClick={() => setAccess('view')}
-                                    className={`flex items-center gap-2 p-3 rounded-xl border transition-all ${
+                                    className={`flex flex-col items-center gap-1 p-2 rounded-xl border transition-all ${
                                         access === 'view' 
                                         ? 'bg-primary-50 dark:bg-primary-900/20 border-primary-500 text-primary-700 dark:text-primary-400' 
                                         : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'
                                     }`}
                                 >
-                                    <div className={`w-5 h-5 rounded-full flex items-center justify-center border ${access === 'view' ? 'border-primary-500 bg-primary-500' : 'border-slate-300'}`}>
-                                        {access === 'view' && <Check className="w-3 h-3 text-white" />}
-                                    </div>
-                                    <span className="text-sm font-medium">Viewer</span>
+                                    <span className="text-xs font-bold uppercase tracking-tighter">Viewer</span>
                                 </button>
                                 <button 
                                     onClick={() => setAccess('edit')}
-                                    className={`flex items-center gap-2 p-3 rounded-xl border transition-all ${
+                                    className={`flex flex-col items-center gap-1 p-2 rounded-xl border transition-all ${
                                         access === 'edit' 
                                         ? 'bg-primary-50 dark:bg-primary-900/20 border-primary-500 text-primary-700 dark:text-primary-400' 
                                         : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'
                                     }`}
                                 >
-                                    <div className={`w-5 h-5 rounded-full flex items-center justify-center border ${access === 'edit' ? 'border-primary-500 bg-primary-500' : 'border-slate-300'}`}>
-                                        {access === 'edit' && <Check className="w-3 h-3 text-white" />}
-                                    </div>
-                                    <span className="text-sm font-medium">Editor</span>
+                                    <span className="text-xs font-bold uppercase tracking-tighter">Editor</span>
+                                </button>
+                                <button 
+                                    onClick={() => setAccess('none')}
+                                    className={`flex flex-col items-center gap-1 p-2 rounded-xl border transition-all ${
+                                        access === 'none' 
+                                        ? 'bg-red-50 dark:bg-red-900/20 border-red-500 text-red-700 dark:text-red-400' 
+                                        : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'
+                                    }`}
+                                >
+                                    <span className="text-xs font-bold uppercase tracking-tighter">None</span>
                                 </button>
                             </div>
                             <p className="text-xs text-slate-400 mt-3 flex items-center gap-1">
                                 <Lock className="w-3 h-3" />
-                                {access === 'view' ? 'Can view and download the item.' : 'Can edit, delete, and manage the item.'}
+                                {access === 'view' ? 'Can view and download.' : access === 'edit' ? 'Can edit and manage.' : 'Item will be hidden from this user.'}
                             </p>
                         </div>
+
+                        {/* Subfolder Specific Permissions */}
+                        <AnimatePresence>
+                            {itemType === 'folder' && subfolders.length > 0 && (
+                                <motion.div 
+                                    initial={{ opacity: 0, height: 0 }}
+                                    animate={{ opacity: 1, height: 'auto' }}
+                                    exit={{ opacity: 0, height: 0 }}
+                                    className="pt-4 border-t dark:border-slate-800 space-y-4"
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <label className="block text-sm font-bold text-slate-700 dark:text-slate-300">
+                                            Manage Subfolders
+                                        </label>
+                                        <span className="text-[10px] bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full text-slate-500 font-bold uppercase tracking-wider">
+                                            Optional Overrides
+                                        </span>
+                                    </div>
+                                    
+                                    <div className="max-h-48 overflow-y-auto pr-1 space-y-2 custom-scrollbar">
+                                        {subfolders.map(sub => (
+                                            <div key={sub._id} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/30 rounded-2xl border border-transparent hover:border-slate-100 dark:hover:border-slate-700 transition-all">
+                                                <div className="flex items-center gap-3 min-w-0">
+                                                    <div className="p-2 bg-white dark:bg-slate-800 rounded-lg shadow-sm">
+                                                        <Shield className="w-3.5 h-3.5 text-amber-500" />
+                                                    </div>
+                                                    <span className="text-sm font-semibold dark:text-slate-200 truncate">{sub.name}</span>
+                                                </div>
+                                                
+                                                <div className="flex items-center gap-1 bg-white dark:bg-slate-800 p-1 rounded-xl shadow-sm border dark:border-slate-700">
+                                                    {['view', 'edit', 'none'].map((acc) => (
+                                                        <button
+                                                            key={acc}
+                                                            onClick={() => setOverrides(prev => ({ ...prev, [sub._id]: acc }))}
+                                                            className={`px-2 py-1 text-[10px] font-bold rounded-lg transition-all ${
+                                                                (overrides[sub._id] || access) === acc 
+                                                                ? acc === 'none' ? 'bg-red-500 text-white' : 'bg-primary-600 text-white'
+                                                                : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
+                                                            }`}
+                                                        >
+                                                            {acc === 'view' ? 'READ' : acc === 'edit' ? 'EDIT' : 'HIDE'}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
                     </div>
 
                     {/* Footer */}

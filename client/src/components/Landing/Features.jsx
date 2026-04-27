@@ -44,15 +44,27 @@ const features = [
 ];
 
 const Features = () => {
+  const [mousePos, setMousePos] = React.useState({ x: 0, y: 0 });
+
+  const handleMouseMove = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setMousePos({
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
+    });
+  };
+
   return (
-    <section id="features" className="py-32 bg-white relative overflow-hidden">
+    <section id="features" className="py-24 bg-white relative overflow-hidden">
+      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary-100/30 rounded-full blur-[120px] -z-10 translate-x-1/2 -translate-y-1/2"></div>
+      
       <div className="max-w-7xl mx-auto px-6 lg:px-8">
         <div className="text-center mb-24">
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
-            className="inline-block px-4 py-1.5 bg-indigo-50 text-indigo-600 rounded-full text-[10px] font-black uppercase tracking-[0.2em] mb-6 border border-indigo-100"
+            className="inline-block px-5 py-2 bg-primary-50 text-primary-600 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] mb-6 border border-primary-100 shadow-sm"
           >
             Engineering Excellence
           </motion.div>
@@ -60,7 +72,7 @@ const Features = () => {
             initial={{ opacity: 0, y: 20 }} 
             whileInView={{ opacity: 1, y: 0 }} 
             viewport={{ once: true }}
-            className="text-4xl lg:text-6xl font-black text-slate-950 mb-6 tracking-tight"
+            className="text-3xl lg:text-5xl font-black text-slate-950 mb-8 tracking-tight leading-[1.1]"
           >
             Powerful Features for <br /> Modern Teams
           </motion.h2>
@@ -69,35 +81,40 @@ const Features = () => {
             whileInView={{ opacity: 1, y: 0 }} 
             viewport={{ once: true }}
             transition={{ delay: 0.1 }}
-            className="text-xl text-slate-600 max-w-2xl mx-auto font-medium"
+            className="text-lg text-slate-600 max-w-2xl mx-auto font-medium leading-relaxed"
           >
             Everything you need to manage your documents effectively in one place, backed by military-grade encryption.
           </motion.p>
         </div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-10">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
           {features.map((feature, index) => (
             <motion.div
               key={index}
+              onMouseMove={handleMouseMove}
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: index * 0.1 }}
               whileHover={{ y: -10 }}
-              className="bg-slate-50/50 p-10 rounded-[2.5rem] border border-slate-100 hover:bg-white hover:shadow-[0_32px_64px_-16px_rgba(0,0,0,0.08)] transition-all group relative overflow-hidden"
+              style={{
+                '--mouse-x': `${mousePos.x}px`,
+                '--mouse-y': `${mousePos.y}px`,
+              }}
+              className="spotlight-card group"
             >
-              <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-primary-500/5 to-transparent rounded-bl-full"></div>
-              
-              <div className="bg-white w-20 h-20 rounded-2xl shadow-xl shadow-slate-200/50 flex items-center justify-center mb-10 group-hover:scale-110 group-hover:rotate-6 transition-all duration-500">
-                {feature.icon}
-              </div>
-              <h3 className="text-2xl font-black text-slate-950 mb-4 tracking-tight">{feature.title}</h3>
-              <p className="text-slate-600 leading-relaxed font-medium">
-                {feature.desc}
-              </p>
-              
-              <div className="mt-8 flex items-center gap-2 text-primary-600 font-bold text-sm opacity-0 group-hover:opacity-100 transition-opacity">
-                Learn more <ArrowRight className="w-4 h-4" />
+              <div className="relative z-10">
+              <div className="bg-white w-16 h-16 rounded-[1.2rem] shadow-[0_20px_40px_-10px_rgba(0,0,0,0.1)] flex items-center justify-center mb-8 group-hover:scale-110 group-hover:rotate-6 transition-all duration-500 border border-slate-50">
+                  {feature.icon}
+                </div>
+                <h3 className="text-2xl font-black text-slate-950 mb-4 tracking-tight">{feature.title}</h3>
+                <p className="text-slate-600 leading-relaxed font-medium">
+                  {feature.desc}
+                </p>
+                
+                <div className="mt-10 flex items-center gap-2 text-primary-600 font-black text-sm group-hover:translate-x-2 transition-transform cursor-pointer">
+                  Learn more <ArrowRight className="w-4 h-4" />
+                </div>
               </div>
             </motion.div>
           ))}

@@ -226,10 +226,13 @@ const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
       <motion.div 
         whileHover={{ y: -8, scale: 1.01 }}
         initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-        className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-2xl transition-all duration-300 group relative overflow-hidden"
+        style={{ zIndex: showOptions ? 100 : 1 }}
+        className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-2xl transition-all duration-300 group relative"
       >
-        {/* Decorative background element */}
-        <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full -mr-16 -mt-16 group-hover:bg-indigo-500/10 transition-colors duration-500" />
+        {/* Decorative background element wrapper */}
+        <div className="absolute inset-0 overflow-hidden rounded-[2rem] pointer-events-none">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full -mr-16 -mt-16 group-hover:bg-indigo-500/10 transition-colors duration-500" />
+        </div>
 
         <div className="flex justify-between items-start mb-6 relative z-10">
           <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-2xl group-hover:bg-indigo-50 dark:group-hover:bg-indigo-500/10 transition-all duration-300 transform group-hover:scale-110">
@@ -359,6 +362,15 @@ const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
               </button>
             )}
             
+            {canEdit && (
+              <button 
+                onClick={(e) => { e.stopPropagation(); handleOpenEditor(); }}
+                className="flex-1 cursor-pointer hover:bg-amber-600 hover:shadow-lg transition-all text-[10px] px-3 py-1.5 bg-amber-500 text-white rounded-xl font-bold flex items-center justify-center gap-1.5 shadow-md border-b-2 border-amber-700"
+                title={isLocked ? "Editing locked for Approved documents" : "Quick editing in browser"}
+              >
+                {isEditorSupported ? <FileEdit className="w-3 h-3" /> : <Edit3 className="w-3 h-3" />} WEB EDIT
+              </button>
+            )}
             {canEdit && canDownload && isEditorSupported && (
               <button 
                 onClick={handleOpenDesktop}
@@ -391,8 +403,8 @@ const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
         <AnimatePresence>
           {showOptions && (
             <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
-              className="absolute right-4 top-14 w-48 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-2xl shadow-2xl z-20 py-2 overflow-hidden"
+              initial={{ opacity: 0, scale: 0.95, y: -10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: -10 }}
+              className="absolute right-0 top-12 w-56 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.2)] z-[100] py-2 overflow-visible"
             >
               <button 
                 onClick={() => { onStar(doc._id); setShowOptions(false); }}
@@ -440,26 +452,27 @@ const SmartDocCard = ({ doc, onStar, onDelete, onShare, onRefresh }) => {
 
               {/* Version History Section */}
               {doc.versions && doc.versions.length > 0 && (
-                <div className="mt-2 pt-2 border-t dark:border-slate-700 px-4">
-                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Previous Versions</p>
-                  <div className="space-y-1 max-h-32 overflow-y-auto pr-1">
+                <div className="mt-2 pt-2 border-t dark:border-slate-700 px-4 pb-2">
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Previous Versions</p>
+                  <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1 thin-scrollbar">
                     {doc.versions.slice().reverse().map((v, i) => (
                       <div 
                         key={i}
-                        className="flex items-center justify-between p-1.5 rounded-lg bg-slate-50 dark:bg-slate-700/50 text-[10px] border border-slate-100 dark:border-slate-600"
+                        className="flex items-center justify-between p-2 rounded-xl bg-slate-50 dark:bg-slate-700/50 text-[10px] border border-slate-100 dark:border-slate-600 hover:border-indigo-300 dark:hover:border-indigo-500/50 transition-colors"
                       >
                         <div className="flex flex-col">
-                          <span className="font-bold text-slate-700 dark:text-slate-200">Version {v.versionNumber}</span>
+                          <span className="font-bold text-slate-700 dark:text-slate-200">V{v.versionNumber}</span>
                           <span className="text-[8px] text-slate-400">{new Date(v.updatedAt).toLocaleDateString()}</span>
                         </div>
                         <a 
                           href={`${API_BASE}/documents/${doc._id}/version/${v.versionNumber}?token=${localStorage.getItem('token')}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="p-1 text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded transition-all"
+                          className="p-1.5 text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition-all"
                           title="Download this version"
+                          onClick={(e) => e.stopPropagation()}
                         >
-                          <Download className="w-3 h-3" />
+                          <Download className="w-3.5 h-3.5" />
                         </a>
                       </div>
                     ))}
