@@ -30,6 +30,7 @@
     "react-hot-toast": "^2.6.0",
     "react-router-dom": "^7.14.0",
     "react-spreadsheet": "^0.10.1",
+    "rolldown": "^1.0.0-rc.15",
     "socket.io-client": "^4.8.3",
     "tailwindcss": "^4.2.2",
     "xlsx": "^0.18.5"
