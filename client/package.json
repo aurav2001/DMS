@@ -4,7 +4,7 @@
   "version": "0.2.0",
   "type": "module",
   "engines": {
-    "node": ">=22"
+    "node": "20.x"
   },
   "scripts": {
     "dev": "vite",
@@ -14,15 +14,12 @@
   },
   "dependencies": {
     "@onlyoffice/document-editor-react": "^2.1.1",
-    "@tailwindcss/postcss": "^4.2.2",
-    "autoprefixer": "^10.4.27",
     "axios": "^1.15.0",
     "framer-motion": "^12.38.0",
     "jszip": "^3.10.1",
     "lucide-react": "^1.8.0",
     "mammoth": "^1.9.1",
     "pdf-lib": "^1.17.1",
-    "postcss": "^8.5.9",
     "pptxgenjs": "^4.0.1",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
@@ -31,22 +28,21 @@
     "react-router-dom": "^7.14.0",
     "react-spreadsheet": "^0.10.1",
     "socket.io-client": "^4.8.3",
-    "tailwindcss": "^4.2.2",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
-    "@tailwindcss/oxide": "^4.2.2",
-    "@tailwindcss/vite": "^4.2.2",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.5.0",
     "eslint": "^9.39.4",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.4.0",
-    "lightningcss": "^1.32.0",
+    "postcss": "^8.5.12",
     "postcss-nesting": "^14.0.0",
+    "tailwindcss": "^3.4.19",
     "vite": "^6.4.2"
   }
 }
