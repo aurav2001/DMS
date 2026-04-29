@@ -22,6 +22,57 @@ const getFolderAccess = async (folderId, userId, userRole) => {
     }
     return 'none';
 };
+// Helper to calculate effective permissions for a document
+const getDocPermissions = async (doc, user, pAccess) => {
+    const userId = user.id.toString();
+    const isAdmin = user.role === 'Admin';
+    const isViewer = user.role === 'Viewer';
+    const uploaderId = doc.uploadedBy?._id?.toString() || doc.uploadedBy?.toString();
+    const isOwner = uploaderId === userId;
+
+    // Direct share on document
+    const directShare = doc.sharedWith?.some(id => id.toString() === userId);
+
+    // Initial permissions based on ownership/role
+    let canView = isOwner || isAdmin || directShare;
+    let canDownload = isOwner || isAdmin || directShare;
+    let canEdit = isOwner || isAdmin;
+    let canShare = isOwner || isAdmin;
+
+    // Folder Inheritance (Crucial for bulk permissions)
+    if (pAccess === 'edit') {
+        canView = true;
+        canDownload = true;
+        canEdit = true; // If folder is editable, all files inside are editable
+    } else if (pAccess === 'view') {
+        canView = true;
+        canDownload = true;
+        // canEdit remains based on owner/admin or directShare check below
+    } else if (pAccess === 'none') {
+        // If folder is hidden and user is NOT owner/admin/directShare, they lose access
+        if (!isOwner && !isAdmin && !directShare) {
+            return { canView: false, canDownload: false, canEdit: false, canShare: false };
+        }
+    }
+
+    // Direct document-level share override
+    if (directShare && doc.permissions?.canEdit) {
+        canEdit = true;
+    }
+
+    // Final safety overrides (Role and Status)
+    if (isViewer) {
+        canEdit = false; // Viewers can NEVER edit
+        canShare = false;
+    }
+
+    if (doc.status === 'Approved') {
+        canEdit = false; // Approved documents cannot be edited
+    }
+
+    return { canView, canDownload, canEdit, canShare };
+};
+
 
 // Create a new folder
 exports.createFolder = async (req, res) => {
@@ -58,87 +109,84 @@ exports.getFolderContents = async (req, res) => {
             return res.status(403).json({ message: 'Access denied to this folder' });
         }
 
-        // 2. Fetch all immediate children
-        const allFolders = await Folder.find({ parentId, isDeleted: false });
-        const allDocuments = await Document.find({ folderId: parentId, isDeleted: false }).populate('uploadedBy', 'name email avatar');
+        const { tab, search } = req.query;
+        let queryFolders = { isDeleted: false };
+        let queryDocs = { isDeleted: false };
 
-        // 3. Filter and annotate folders
+        // --- TAB FILTERING LOGIC ---
+        if (tab === 'Starred') {
+            // Global Starred: All starred docs across all folders
+            queryFolders = null; // Don't show folders in Starred tab (since they don't have stars)
+            queryDocs.isStarred = true;
+        } else if (tab === 'Sharing') {
+            // Global Sharing: Items shared with the user
+            queryFolders = { 'sharedWith.user': userId, isDeleted: false };
+            queryDocs = { sharedWith: userId, isDeleted: false };
+        } else if (tab === 'Recent') {
+            // Global Recent: Recently updated docs
+            queryFolders = null;
+            queryDocs.$or = [{ uploadedBy: userId }, { sharedWith: userId }];
+            queryDocs.isDeleted = false;
+        } else if (tab === 'Trash') {
+            // Trash: Items deleted by the user
+            queryFolders = { owner: userId, isDeleted: true };
+            queryDocs = { uploadedBy: userId, isDeleted: true };
+        } else {
+            // Default: My Documents (Folder Navigation)
+            queryFolders.parentId = parentId;
+            queryDocs.folderId = parentId;
+            
+            // At root, only show owned folders (Shared items are in Sharing tab)
+            if (!parentId) {
+                queryFolders.owner = userId;
+                queryDocs.uploadedBy = userId;
+            }
+        }
+
+        // --- FETCHING ---
+        let allFolders = [];
+        let allDocuments = [];
+
+        if (queryFolders) {
+            allFolders = await Folder.find(queryFolders);
+        }
+
+        if (queryDocs) {
+            let docsQuery = Document.find(queryDocs).populate('uploadedBy', 'name email avatar');
+            if (tab === 'Recent') {
+                docsQuery = docsQuery.sort({ updatedAt: -1 }).limit(20);
+            }
+            allDocuments = await docsQuery;
+        }
+
+        // --- SEARCH FILTERING (If search query exists) ---
+        if (search) {
+            const regex = new RegExp(search, 'i');
+            allFolders = allFolders.filter(f => regex.test(f.name));
+            allDocuments = allDocuments.filter(d => regex.test(d.title));
+        }
+
+        // --- PERMISSION ANNOTATION ---
         const accessibleFolders = [];
         for (const f of allFolders) {
             let access = 'none';
-            if (!parentId) {
-                // If at root, only show owned or explicitly shared
-                if (f.owner.toString() === userId.toString()) access = 'edit';
-                else {
-                    const share = f.sharedWith.find(s => s.user.toString() === userId.toString());
-                    if (share) access = share.access;
-                }
+            if (userRole === 'Admin' || f.owner.toString() === userId.toString()) {
+                access = 'edit';
             } else {
-                // If inside a folder, check explicit share or inherit from parentAccess
                 const share = f.sharedWith.find(s => s.user.toString() === userId.toString());
-                access = share ? share.access : parentAccess;
+                if (share) access = share.access;
+                else if (parentId) access = parentAccess; // Inherit if navigating
             }
 
-            if (access !== 'none') {
+            if (access !== 'none' || tab === 'Sharing') {
                 accessibleFolders.push({ ...f.toObject(), userAccess: access });
             }
         }
 
-        // 4. Helper to calculate effective permissions for a document
-        const getDocPermissions = async (doc, user, pAccess) => {
-            const userId = user.id.toString();
-            const isAdmin = user.role === 'Admin';
-            const isViewer = user.role === 'Viewer';
-            const uploaderId = doc.uploadedBy?._id?.toString() || doc.uploadedBy?.toString();
-            const isOwner = uploaderId === userId;
-
-            // Direct share on document
-            const directShare = doc.sharedWith?.some(id => id.toString() === userId);
-
-            // Initial permissions based on ownership/role
-            let canView = isOwner || isAdmin || directShare;
-            let canDownload = isOwner || isAdmin || directShare;
-            let canEdit = isOwner || isAdmin;
-            let canShare = isOwner || isAdmin;
-
-            // Folder Inheritance (Crucial for bulk permissions)
-            if (pAccess === 'edit') {
-                canView = true;
-                canDownload = true;
-                canEdit = true; // If folder is editable, all files inside are editable
-            } else if (pAccess === 'view') {
-                canView = true;
-                canDownload = true;
-                // canEdit remains based on owner/admin or directShare check below
-            } else if (pAccess === 'none') {
-                // If folder is hidden and user is NOT owner/admin/directShare, they lose access
-                if (!isOwner && !isAdmin && !directShare) {
-                    return { canView: false, canDownload: false, canEdit: false, canShare: false };
-                }
-            }
-
-            // Direct document-level share override
-            if (directShare && doc.permissions?.canEdit) {
-                canEdit = true;
-            }
-
-            // Final safety overrides (Role and Status)
-            if (isViewer) {
-                canEdit = false; // Viewers can NEVER edit
-                canShare = false;
-            }
-
-            if (doc.status === 'Approved') {
-                canEdit = false; // Approved documents cannot be edited
-            }
-
-            return { canView, canDownload, canEdit, canShare };
-        };
-
         const docsWithPerms = [];
         for (const doc of allDocuments) {
             const perms = await getDocPermissions(doc, req.user, parentAccess);
-            if (perms.canView) {
+            if (perms.canView || tab === 'Sharing' || tab === 'Starred' || tab === 'Trash') {
                 docsWithPerms.push({ ...doc.toObject(), userPermissions: perms });
             }
         }
