@@ -115,28 +115,30 @@ exports.getFolderContents = async (req, res) => {
 
         // --- TAB FILTERING LOGIC ---
         if (tab === 'Starred') {
-            // Global Starred: All starred docs across all folders
-            queryFolders = null; // Don't show folders in Starred tab (since they don't have stars)
+            queryFolders = null;
             queryDocs.isStarred = true;
         } else if (tab === 'Sharing') {
-            // Global Sharing: Items shared with the user
-            queryFolders = { 'sharedWith.user': userId, isDeleted: false };
-            queryDocs = { sharedWith: userId, isDeleted: false };
+            if (!parentId) {
+                // Global Sharing: Show ONLY items directly shared with me at root
+                queryFolders = { 'sharedWith.user': userId, isDeleted: false };
+                queryDocs = { sharedWith: userId, isDeleted: false };
+            } else {
+                // Navigation inside a Shared Folder: Act like normal navigation
+                queryFolders.parentId = parentId;
+                queryDocs.folderId = parentId;
+            }
         } else if (tab === 'Recent') {
-            // Global Recent: Recently updated docs
             queryFolders = null;
             queryDocs.$or = [{ uploadedBy: userId }, { sharedWith: userId }];
             queryDocs.isDeleted = false;
         } else if (tab === 'Trash') {
-            // Trash: Items deleted by the user
             queryFolders = { owner: userId, isDeleted: true };
             queryDocs = { uploadedBy: userId, isDeleted: true };
         } else {
-            // Default: My Documents (Folder Navigation)
+            // Default: My Documents
             queryFolders.parentId = parentId;
             queryDocs.folderId = parentId;
             
-            // At root, only show owned folders (Shared items are in Sharing tab)
             if (!parentId) {
                 queryFolders.owner = userId;
                 queryDocs.uploadedBy = userId;

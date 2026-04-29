@@ -127,7 +127,7 @@ const Dashboard = () => {
             setSearchQuery={setSearchQuery}
             docCount={documents.length + folders.length}
         >
-            {activeTab === 'My Documents' && <Breadcrumbs crumbs={crumbs} onNavigate={handleNavigate} />}
+            {(activeTab === 'My Documents' || activeTab === 'Sharing') && <Breadcrumbs crumbs={crumbs} onNavigate={handleNavigate} />}
 
             {loading ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
