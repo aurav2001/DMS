@@ -847,7 +847,7 @@ const DocumentPermissionCard = ({
                   </div>
 
                   {showUserList && shareSearch.length > 0 && (
-                    <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-white/10 rounded-xl shadow-2xl z-50 max-h-48 overflow-y-auto py-2">
+                    <div className="mt-2 bg-white/5 border border-white/10 rounded-xl max-h-48 overflow-y-auto py-1 overflow-x-hidden custom-scrollbar">
                       {users
                         .filter(u => 
                           (u.email.toLowerCase().includes(shareSearch.toLowerCase()) || 
