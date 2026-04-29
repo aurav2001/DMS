@@ -135,13 +135,14 @@ exports.getFolderContents = async (req, res) => {
             queryFolders = { owner: userId, isDeleted: true };
             queryDocs = { uploadedBy: userId, isDeleted: true };
         } else {
-            // Default: My Documents
+            // Default: My Documents (Folder Navigation)
             queryFolders.parentId = parentId;
             queryDocs.folderId = parentId;
             
             if (!parentId) {
-                queryFolders.owner = userId;
-                queryDocs.uploadedBy = userId;
+                // At root, show owned items AND items shared with me
+                queryFolders.$or = [{ owner: userId }, { 'sharedWith.user': userId }];
+                queryDocs.$or = [{ uploadedBy: userId }, { sharedWith: userId }];
             }
         }
 

@@ -80,6 +80,21 @@ const getEffectivePermissions = async (doc, user) => {
     return { canView, canDownload, canEdit, canShare, canDelete };
 };
 
+// HELPER: Resolve full folder path from database for physical storage
+const resolveFolderPath = async (folderId) => {
+    if (!folderId) return '';
+    let pathParts = [];
+    let currentId = folderId;
+    while (currentId) {
+        const folder = await Folder.findById(currentId);
+        if (!folder) break;
+        pathParts.unshift(folder.name.replace(/[^a-z0-9]/gi, '_')); // Sanitize folder name
+        currentId = folder.parentId;
+    }
+    return pathParts.join('/');
+};
+
+
 // HELPER: Handle versioning when uploading an existing file
 const handleVersionUpdateFromUpload = async (req, res, document) => {
     try {
@@ -111,7 +126,8 @@ const handleVersionUpdateFromUpload = async (req, res, document) => {
             document.storagePath = `${department}/${extension}/${fileName}`;
         } else if (storageType === 'sftp') {
             const basePath = (process.env.SFTP_BASE_PATH || 'uploads').trim().replace(/^\//, '').replace(/\/$/, '');
-            const remotePath = `/${basePath}/${department}/${extension}/${fileName}`;
+            const folderPath = await resolveFolderPath(document.folderId);
+            const remotePath = `/${basePath}/${folderPath}/${fileName}`;
             console.log(`[VERSION-UPDATE] SFTP Upload Path: ${remotePath}`);
             await uploadToSFTP(req.file.buffer, remotePath);
             document.storagePath = remotePath;
@@ -214,7 +230,8 @@ const uploadDocument = async (req, res) => {
         } else if (storageType === 'sftp') {
             console.log(`[UPLOAD] Storing on SFTP...`);
             const basePath = (process.env.SFTP_BASE_PATH || 'uploads').trim().replace(/^\//, '').replace(/\/$/, '');
-            const remotePath = `/${basePath}/${department}/${extension}/${fileName}`;
+            const folderPath = await resolveFolderPath(normalizedFolderId);
+            const remotePath = `/${basePath}/${folderPath ? folderPath + '/' : ''}${fileName}`;
             console.log(`[UPLOAD] SFTP Remote Path: ${remotePath}`);
             await uploadToSFTP(req.file.buffer, remotePath);
             newDocument.storagePath = remotePath;
